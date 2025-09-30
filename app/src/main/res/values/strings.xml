@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TFT Tower Defense</string>
+    
+    <!-- Difficulty -->
+    <string name="difficulty_easy">Dễ</string>
+    <string name="difficulty_normal">Thường</string>
+    <string name="difficulty_hard">Khó</string>
+    
+    <!-- Game UI -->
+    <string name="score">Score</string>
+    <string name="wave">Wave</string>
+    <string name="lives">Lives</string>
+    <string name="gold">Vàng</string>
+    <string name="level">Level</string>
+    <string name="deploy">Deploy</string>
+    <string name="bench">Bench</string>
+    <string name="shop">Shop</string>
+    
+    <!-- Actions -->
+    <string name="buy">Mua</string>
+    <string name="sell">Bán</string>
+    <string name="reroll">Reroll</string>
+    <string name="buy_xp">Mua XP</string>
+    <string name="free_reroll">Free</string>
+    
+    <!-- Game phases -->
+    <string name="phase_prep">CHUẨN BỊ</string>
+    <string name="phase_combat">CHIẾN ĐẤU</string>
+    
+    <!-- Messages -->
+    <string name="not_enough_gold">Không đủ vàng</string>
+    <string name="bench_full">Bench đã đầy</string>
+    <string name="deploy_cap_full">Đã đạt giới hạn deploy</string>
+    <string name="game_over">GAME OVER</string>
+    <string name="paused">TẠM NGHỈ</string>
+    
+    <!-- Buttons -->
+    <string name="start_game">Bắt đầu</string>
+    <string name="restart">Chơi lại</string>
+    <string name="resume">Tiếp tục</string>
+    <string name="back_to_menu">Về menu</string>
+    <string name="close">Đóng</string>
+    <string name="confirm">Xác nhận</string>
+    <string name="cancel">Hủy</string>
+    
+    <!-- Heroes -->
+    <string name="hero_kim">Kim</string>
+    <string name="hero_moc">Mộc</string>
+    <string name="hero_thuy">Thủy</string>
+    <string name="hero_hoa">Hỏa</string>
+    <string name="hero_tho">Thổ</string>
+    
+    <!-- Stats -->
+    <string name="damage">Damage</string>
+    <string name="fire_rate">Fire Rate</string>
+    <string name="tier">Tier</string>
+    <string name="star">Star</string>
+</resources>
