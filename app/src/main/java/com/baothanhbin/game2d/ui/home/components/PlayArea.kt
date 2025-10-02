@@ -20,6 +20,7 @@ import com.baothanhbin.game2d.game.model.*
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Movie
+import androidx.compose.ui.graphics.drawscope.Stroke
 
 /**
  * Khu vực chơi game - hiển thị enemies, bullets, effects
@@ -40,7 +41,24 @@ fun PlayArea(
         chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
     }
     
-    val bgBitmap: ImageBitmap = remember { BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.background).asImageBitmap() }
+    val bulletBang: ImageBitmap = remember {
+        // Load and chroma-key the bullet băng image
+        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.bullet_bang)
+            .copy(Bitmap.Config.ARGB_8888, true)
+        val keyColor = raw.getPixel(0, 0)
+        chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
+    }
+    
+    val bgBitmap: ImageBitmap = remember {
+        // Decode background downsampled to screen size to avoid huge bitmaps
+        val dm = context.resources.displayMetrics
+        decodeDownsampledResource(
+            context = context,
+            resId = com.baothanhbin.game2d.R.drawable.bg_winter,
+            reqWidth = dm.widthPixels,
+            reqHeight = dm.heightPixels
+        )
+    }
     
     // Decode multiple GIF enemies
     val basic1Frames: List<ImageBitmap>? = remember {
@@ -52,15 +70,23 @@ fun PlayArea(
     val fireRowFrames: List<ImageBitmap>? = remember {
         try { decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.fire_row, frameSamples = 10) } catch (_: Throwable) { null }
     }
+    val waveFrames: List<ImageBitmap>? = remember {
+        try { decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.wave, frameSamples = 12) } catch (_: Throwable) { null }
+    }
+    
+    val freezeImage: ImageBitmap = remember {
+        // Load freeze.png image
+        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.freeze)
+            .copy(Bitmap.Config.ARGB_8888, true)
+        val keyColor = raw.getPixel(0, 0)
+        chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
+    }
     Box(
         modifier = modifier
     ) {
         Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Debug: Log canvas drawing
-            android.util.Log.d("PlayArea", "🎨 CANVAS DRAW: enemies=${gameState.enemies.size}, bullets=${gameState.bullets.size}, effects=${gameState.effects.size}")
-            
             // Vẽ background image phủ toàn bộ canvas
             drawBackground(bgBitmap)
             
@@ -68,12 +94,10 @@ fun PlayArea(
             val scaleX = size.width / com.baothanhbin.game2d.game.model.GameState.SCREEN_WIDTH
             val scaleY = size.height / com.baothanhbin.game2d.game.model.GameState.SCREEN_HEIGHT
             
-            android.util.Log.d("PlayArea", "🎨 SCALE: scaleX=$scaleX, scaleY=$scaleY, canvasSize=${size}")
-            
+
             withTransform({ scale(scaleX = scaleX, scaleY = scaleY) }) {
                 // Vẽ enemies
                 gameState.enemies.forEach { enemy ->
-                    android.util.Log.d("PlayArea", "👹 DRAW ENEMY: ${enemy.id} at (${enemy.x}, ${enemy.y})")
                     if (enemy.enemyType == EnemyType.ROBE) {
                         val frames = when (enemy.sprite) {
                             EnemySprite.BASIC_1 -> basic1Frames
@@ -82,25 +106,28 @@ fun PlayArea(
                         }
                         if (frames != null && frames.isNotEmpty()) {
                             val frame = getGifFrameForTime(frames)
-                            drawEnemy(enemy, frame)
+                            drawEnemy(enemy, frame, freezeImage)
                         }
                     }
                 }
                 
                 // Vẽ bullets
                 gameState.bullets.forEach { bullet ->
-                    android.util.Log.d("PlayArea", "🔫 DRAW BULLET: ${bullet.id} at (${bullet.x}, ${bullet.y})")
-                    drawBullet(bullet, bulletKim)
+                    val bulletBitmap = when (bullet.heroType) {
+                        HeroType.ICE -> bulletBang
+                        else -> bulletKim
+                    }
+                    drawBullet(bullet, bulletBitmap)
                 }
                 
-                // Vẽ effects (bao gồm FIRE_ROW)
+                // Vẽ effects (bao gồm FIRE_ROW và WAVE)
                 gameState.effects.forEach { effect ->
-                    android.util.Log.d("PlayArea", "✨ DRAW EFFECT: ${effect.type} at (${effect.x}, ${effect.y})")
                     when (effect.type) {
                         EffectType.FIRE_ROW -> {
                             if (fireRowFrames != null && fireRowFrames.isNotEmpty()) {
                                 val frame = getGifFrameForTime(fireRowFrames)
-                                val width = size.width
+                                // Use game-space dimensions; the outer transform will scale to canvas
+                                val width = com.baothanhbin.game2d.game.model.GameState.SCREEN_WIDTH
                                 val height = effect.size
                                 val dstX = 0
                                 val dstY = (effect.y - height / 2f).toInt()
@@ -110,7 +137,26 @@ fun PlayArea(
                                     srcSize = IntSize(frame.width, frame.height),
                                     dstOffset = IntOffset(dstX, dstY),
                                     dstSize = IntSize(width.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1)),
-                                    filterQuality = FilterQuality.High
+                                    filterQuality = FilterQuality.Medium
+                                )
+                            }
+                        }
+                        EffectType.WAVE -> {
+                            if (waveFrames != null && waveFrames.isNotEmpty()) {
+                                val frame = getGifFrameForTime(waveFrames)
+                                // Use game-space dimensions; let the transform handle scaling
+                                val width = effect.width
+                                val height = effect.size
+                                val dstX = effect.x.toInt()
+                                val dstY = (effect.y - height / 2f).toInt()
+                                drawImage(
+                                    image = frame,
+                                    srcOffset = IntOffset.Zero,
+                                    srcSize = IntSize(frame.width, frame.height),
+                                    dstOffset = IntOffset(dstX, dstY),
+                                    dstSize = IntSize(width.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1)),
+                                    filterQuality = FilterQuality.Medium,
+                                    alpha = effect.alpha
                                 )
                             }
                         }
@@ -150,25 +196,67 @@ private fun chromaKeyBitmap(src: Bitmap, keyColor: Int, tolerance: Int = 16): Bi
     return out
 }
 
+private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+    val (height: Int, width: Int) = options.outHeight to options.outWidth
+    var inSampleSize = 1
+    if (height > reqHeight || width > reqWidth) {
+        var halfHeight = height / 2
+        var halfWidth = width / 2
+        while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+            inSampleSize *= 2
+        }
+    }
+    return inSampleSize.coerceAtLeast(1)
+}
+
+private fun decodeDownsampledResource(
+    context: android.content.Context,
+    resId: Int,
+    reqWidth: Int,
+    reqHeight: Int
+): ImageBitmap {
+    // First decode with inJustDecodeBounds=true to check dimensions
+    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeResource(context.resources, resId, options)
+    options.inJustDecodeBounds = false
+    options.inPreferredConfig = Bitmap.Config.ARGB_8888
+    options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+    val bmp = BitmapFactory.decodeResource(context.resources, resId, options)
+    val safe = (bmp ?: Bitmap.createBitmap(reqWidth.coerceAtLeast(1), reqHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888))
+    // Hard cap the largest dimension to avoid Canvas huge bitmap draws
+    val maxDim = 2048
+    val maxOf = kotlin.math.max(safe.width, safe.height)
+    return if (maxOf > maxDim) {
+        val scale = maxDim.toFloat() / maxOf.toFloat()
+        val targetW = kotlin.math.max(1, (safe.width * scale).toInt())
+        val targetH = kotlin.math.max(1, (safe.height * scale).toInt())
+        Bitmap.createScaledBitmap(safe, targetW, targetH, true).asImageBitmap()
+    } else {
+        safe.asImageBitmap()
+    }
+}
+
 /**
  * Vẽ background với 5 cột rõ ràng
  */
 private fun DrawScope.drawBackground(image: ImageBitmap) {
+    val dstW = kotlin.math.min(this.size.width.toInt().coerceAtLeast(1), image.width)
+    val dstH = kotlin.math.min(this.size.height.toInt().coerceAtLeast(1), image.height)
     drawImage(
         image = image,
-        srcOffset = androidx.compose.ui.unit.IntOffset.Zero,
+        srcOffset = IntOffset.Zero,
         srcSize = IntSize(image.width, image.height),
-        dstOffset = androidx.compose.ui.unit.IntOffset.Zero,
-        dstSize = IntSize(this.size.width.toInt().coerceAtLeast(1), this.size.height.toInt().coerceAtLeast(1))
+        dstOffset = IntOffset.Zero,
+        dstSize = IntSize(dstW, dstH),
+        filterQuality = FilterQuality.Low
     )
 }
 
-// Removed boar bitmap swap logic
 
 /**
  * Vẽ enemy sử dụng boar drawable
  */
-private fun DrawScope.drawEnemy(enemy: Enemy, boarBitmap: ImageBitmap) {
+private fun DrawScope.drawEnemy(enemy: Enemy, boarBitmap: ImageBitmap, freezeImage: ImageBitmap) {
     val width = enemy.size * 2.0f
     val height = enemy.size * 2.0f
     val dstX = (enemy.x - width / 2f).toInt()
@@ -202,6 +290,32 @@ private fun DrawScope.drawEnemy(enemy: Enemy, boarBitmap: ImageBitmap) {
             color = Color.Green,
             topLeft = Offset(enemy.x - barWidth / 2f, barY),
             size = androidx.compose.ui.geometry.Size(barWidth * enemy.hpPercentage, barHeight)
+        )
+    }
+    
+    // Vẽ trạng thái đóng băng và làm chậm
+    if (enemy.isFrozen) {
+        // Hiển thị freeze.png trên enemy - to hơn
+        val freezeSize = enemy.size * 1.8f
+        val freezeX = (enemy.x - freezeSize / 2f).toInt()
+        val freezeY = (enemy.y - freezeSize / 2f).toInt()
+        
+        drawImage(
+            image = freezeImage,
+            srcOffset = IntOffset.Zero,
+            srcSize = IntSize(freezeImage.width, freezeImage.height),
+            dstOffset = IntOffset(freezeX, freezeY),
+            dstSize = IntSize(freezeSize.toInt().coerceAtLeast(1), freezeSize.toInt().coerceAtLeast(1)),
+            filterQuality = FilterQuality.High,
+            alpha = 0.8f
+        )
+    } else if (enemy.isSlowed) {
+        // Vòng tròn làm chậm
+        drawCircle(
+            color = Color(0xFF87CEEB).copy(alpha = 0.5f),
+            radius = enemy.size * 0.6f,
+            center = Offset(enemy.x, enemy.y),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
         )
     }
 }
@@ -247,9 +361,18 @@ private fun DrawScope.drawEnemyPlaceholder(enemy: Enemy) {
  * Vẽ bullet
  */
 private fun DrawScope.drawBullet(bullet: Bullet, bulletBitmap: ImageBitmap) {
-    // Enlarge bullet visual size
-    val width = bullet.size * 5.0f
-    val height = bullet.size * 10f
+    // Enlarge bullet visual size - khác nhau cho từng loại đạn
+    val scaleMultiplier = when (bullet.heroType) {
+        HeroType.ICE -> 10.0f  // Đạn băng to hơn
+        HeroType.METAL -> 5.0f   // Đạn kim bình thường
+        else -> 5.0f           // Các loại khác bình thường
+    }
+    
+    val width = bullet.size * scaleMultiplier
+    val height = when (bullet.heroType) {
+        HeroType.ICE -> bullet.size * scaleMultiplier  // Đạn băng vuông
+        else -> bullet.size * (scaleMultiplier * 2f)    // Các loại khác hình chữ nhật dài
+    }
     val dstX = (bullet.x - width / 2f).toInt()
     val dstY = (bullet.y - height / 2f).toInt()
 
@@ -391,6 +514,37 @@ private fun DrawScope.drawEffect(effect: Effect) {
         }
         EffectType.FIRE_ROW -> {
             // FIRE_ROW được render riêng phía trên (dùng GIF). Không vẽ tại đây.
+        }
+        EffectType.WAVE -> {
+            // WAVE được render riêng phía trên (dùng GIF). Không vẽ tại đây.
+        }
+        EffectType.FREEZE -> {
+            // Vẽ hiệu ứng đóng băng - vòng tròn băng với hiệu ứng lạnh
+            drawCircle(
+                color = color,
+                radius = radius,
+                center = Offset(effect.x, effect.y),
+                style = Stroke(width = 3.dp.toPx())
+            )
+            // Vòng tròn bên trong
+            drawCircle(
+                color = color.copy(alpha = effect.alpha * 0.5f),
+                radius = radius * 0.7f,
+                center = Offset(effect.x, effect.y)
+            )
+            // Các tinh thể băng nhỏ
+            repeat(8) { i ->
+                val angle = (i * 45f + effect.rotation) * (Math.PI / 180f)
+                val endX = effect.x + kotlin.math.cos(angle).toFloat() * radius * 0.8f
+                val endY = effect.y + kotlin.math.sin(angle).toFloat() * radius * 0.8f
+                
+                drawLine(
+                    color = color.copy(alpha = effect.alpha * 0.8f),
+                    start = Offset(effect.x, effect.y),
+                    end = Offset(endX, endY),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
         }
     }
 }

@@ -14,11 +14,11 @@ class SoundSystem {
         // TODO: Tích hợp với MediaPlayer để phát âm thanh
         // Có thể sử dụng SoundPool hoặc MediaPlayer
         when (unit.type) {
-            HeroType.KIM -> playSound("shoot_kim.wav")
-            HeroType.MOC -> playSound("shoot_moc.wav")
-            HeroType.THUY -> playSound("shoot_thuy.wav")
-            HeroType.HOA -> playSound("shoot_hoa.wav")
-            HeroType.THO -> playSound("shoot_tho.wav")
+            HeroType.METAL -> playSound("shoot_kim.wav")
+            HeroType.FLOWER -> playSound("shoot_moc.wav")
+            HeroType.WATER -> playSound("shoot_thuy.wav")
+            HeroType.FIRE -> playSound("shoot_hoa.wav")
+            HeroType.ICE -> playSound("shoot_tho.wav")
         }
     }
     

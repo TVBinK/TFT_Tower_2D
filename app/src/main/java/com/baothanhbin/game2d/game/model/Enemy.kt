@@ -15,7 +15,13 @@ data class Enemy(
     val size: Float = 80f,
     val reward: Int = 1,
     val enemyType: EnemyType = EnemyType.BASIC,
-    val sprite: EnemySprite = EnemySprite.BASIC_1
+    val sprite: EnemySprite = EnemySprite.BASIC_1,
+    // Trạng thái đóng băng và làm chậm
+    val isFrozen: Boolean = false,
+    val freezeEndTime: Long = 0L,
+    val isSlowed: Boolean = false,
+    val slowEndTime: Long = 0L,
+    val slowMultiplier: Float = 1f
 ) {
     
     /**
@@ -48,10 +54,59 @@ data class Enemy(
     }
     
     /**
+     * Áp dụng đóng băng
+     */
+    fun freeze(durationMs: Long): Enemy {
+        val freezeEndTime = System.currentTimeMillis() + durationMs
+        return copy(
+            isFrozen = true,
+            freezeEndTime = freezeEndTime
+        )
+    }
+    
+    /**
+     * Áp dụng làm chậm
+     */
+    fun slow(durationMs: Long, multiplier: Float = 0.5f): Enemy {
+        val slowEndTime = System.currentTimeMillis() + durationMs
+        return copy(
+            isSlowed = true,
+            slowEndTime = slowEndTime,
+            slowMultiplier = multiplier
+        )
+    }
+    
+    /**
+     * Cập nhật trạng thái đóng băng và làm chậm
+     */
+    fun updateStatus(): Enemy {
+        val currentTime = System.currentTimeMillis()
+        var updated = this
+        
+        // Kiểm tra đóng băng
+        if (updated.isFrozen && currentTime >= updated.freezeEndTime) {
+            updated = updated.copy(isFrozen = false, freezeEndTime = 0L)
+        }
+        
+        // Kiểm tra làm chậm
+        if (updated.isSlowed && currentTime >= updated.slowEndTime) {
+            updated = updated.copy(isSlowed = false, slowEndTime = 0L, slowMultiplier = 1f)
+        }
+        
+        return updated
+    }
+    
+    /**
+     * Tốc độ thực tế sau khi áp dụng làm chậm
+     */
+    val actualSpeed: Float
+        get() = if (isFrozen) 0f else if (isSlowed) speed * slowMultiplier else speed
+    
+    /**
      * Di chuyển xuống
      */
     fun moveDown(deltaTime: Float): Enemy {
-        return copy(y = y + speed * deltaTime)
+        return copy(y = y + actualSpeed * deltaTime)
     }
     
     /**

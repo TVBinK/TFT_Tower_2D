@@ -8,7 +8,6 @@ import java.util.UUID
 data class Unit(
     val id: String = generateId(),
     val type: HeroType,
-    val tier: Tier,
     val star: Star = Star.ONE,
     val baseDamage: Float,
     val baseFireRateMs: Long,
@@ -17,6 +16,7 @@ data class Unit(
     val manaCost: Float = 20f, // Cost mana để bắn
     val cooldownRemainingMs: Long = 0L,
     val lastShotAtMs: Long = 0L,
+    val lastWaveAtMs: Long = 0L, // Thời gian tạo wave cuối cùng
     
     // Vị trí nếu đang trên board
     val boardPosition: BoardSlot? = null,
@@ -44,10 +44,10 @@ data class Unit(
         }
     
     /**
-     * Giá bán lại (100% giá gốc)
+     * Giá bán lại (cố định cho tất cả hero)
      */
     val sellPrice: Int
-        get() = tier.cost
+        get() = 1
     
     companion object {
         private const val MIN_FIRE_RATE_MS: Long = 700L
@@ -63,43 +63,43 @@ data class Unit(
             return "unit_${++idCounter}_${System.currentTimeMillis()}"
         }
         /**
-         * Tạo Unit mới theo tier và type
+         * Tạo Unit mới theo type
          */
-        fun create(type: HeroType, tier: Tier): Unit {
-            val (damage, fireRate, manaCost) = getBaseStatsForTier(tier)
+        fun create(type: HeroType): Unit {
+            val (damage, fireRate, manaCost) = getBaseStatsForType(type)
+            val currentTime = System.currentTimeMillis()
             
             return Unit(
                 type = type,
-                tier = tier,
                 baseDamage = damage,
                 baseFireRateMs = fireRate,
                 manaCost = manaCost,
                 // Khởi tạo cooldown ngẫu nhiên để tránh tất cả bắn cùng lúc khi vào game
                 cooldownRemainingMs = (Math.random() * fireRate).toLong().coerceAtLeast(0L),
-                lastShotAtMs = System.currentTimeMillis()
+                lastShotAtMs = currentTime,
+                lastWaveAtMs = currentTime // Khởi tạo lastWaveAtMs để tránh wave ngay lập tức
             )
         }
         
         /**
-         * Lấy stats cơ bản theo tier
+         * Lấy stats cơ bản theo type
          */
-        private fun getBaseStatsForTier(tier: Tier): Triple<Float, Long, Float> {
-            return when (tier) {
-                // T1 bắn chậm hơn nữa và tốn mana hơn để tránh spam đạn
-                Tier.T1 -> Triple(20f, 2600L, 30f)  // Damage, FireRate, ManaCost
-                Tier.T2 -> Triple(25f, 1400L, 22f)  // T2 chậm hơn một chút
-                Tier.T3 -> Triple(30f, 880L, 25f)   // T3 mạnh hơn nữa
-                Tier.T4 -> Triple(40f, 800L, 30f)   // T4 rất mạnh
-                Tier.T5 -> Triple(50f, 720L, 35f)   // T5 mạnh nhất
+        private fun getBaseStatsForType(type: HeroType): Triple<Float, Long, Float> {
+            return when (type) {
+                HeroType.METAL -> Triple(25f, 2000L, 25f)  // Damage, FireRate, ManaCost
+                HeroType.FLOWER -> Triple(20f, 2200L, 20f)  // Healer, chậm hơn
+                HeroType.WATER -> Triple(30f, 1800L, 30f)   // Strong, nhanh hơn
+                HeroType.FIRE -> Triple(35f, 1600L, 35f)    // Very strong
+                HeroType.ICE -> Triple(22f, 2400L, 22f)     // Slower, freeze effect
             }
         }
         
         /**
-         * Tạo random Unit theo tier
+         * Tạo random Unit
          */
-        fun createRandom(tier: Tier): Unit {
+        fun createRandom(): Unit {
             val randomType = heroTypes.random()
-            return create(randomType, tier)
+            return create(randomType)
         }
     }
     
@@ -119,14 +119,5 @@ data class Unit(
             isOnBoard = slot != null
         )
     }
-    
-    /**
-     * Kiểm tra có thể merge với unit khác không
-     */
-    fun canMergeWith(other: Unit): Boolean {
-        return this.type == other.type && 
-               this.tier == other.tier && 
-               this.star == other.star &&
-               this.star != Star.THREE // Không thể merge 3★
-    }
+
 }

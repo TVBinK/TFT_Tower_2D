@@ -55,11 +55,19 @@ data class Bullet(
             startY: Float,
             targetEnemy: Enemy? = null
         ): Bullet {
+            // Size khác nhau cho từng loại đạn
+            val bulletSize = when (unit.type) {
+                HeroType.ICE -> 10f  // Đạn băng to hơn
+                HeroType.METAL -> 8f    // Đạn kim bình thường
+                else -> 8f            // Các loại khác bình thường
+            }
+            
             return Bullet(
                 x = startX,
                 y = startY,
                 damage = unit.actualDamage,
                 speed = unit.bulletSpeed,
+                size = bulletSize,
                 heroType = unit.type,
                 targetEnemyId = targetEnemy?.id,
                 targetX = targetEnemy?.x,

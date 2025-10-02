@@ -35,7 +35,7 @@ class ShopSystem {
         unit ?: return Triple(null, null, null)
         
         val newPlayer = player
-            .copy(gold = player.gold - unit.tier.cost)
+            .copy(gold = player.gold - 1) // Fixed cost
             .addToBench(unit)
         
         return Triple(newShop, newPlayer, unit)

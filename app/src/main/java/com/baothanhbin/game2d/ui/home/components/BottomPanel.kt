@@ -11,14 +11,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import com.baothanhbin.game2d.game.model.ColorTheme
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalDensity
 import android.util.Log
+import androidx.compose.ui.tooling.preview.Preview
 import com.baothanhbin.game2d.game.model.BoardSlot
 import com.baothanhbin.game2d.game.model.GameState
 
@@ -43,7 +45,7 @@ private fun CollapseHeader(
     ) {
         Text(text = title, color = Color.White)
         TextButton(onClick = onToggle) {
-            Text(if (collapsed) "Hiển thị" else "Ẩn", color = Color.White)
+            Text(if (collapsed) "Show" else "Hide", color = Color.White)
         }
     }
 }
@@ -59,6 +61,8 @@ fun BottomPanel(
     onRecallUnit: (BoardSlot) -> Unit,
     onSwapUnit: (String, BoardSlot) -> Unit,
     onStartCombat: () -> Unit,
+    onOpenShop: () -> Unit = {},
+    colorTheme: ColorTheme = ColorTheme.getDefault(),
     modifier: Modifier = Modifier
 ) {
     var selectedUnit by remember { mutableStateOf<com.baothanhbin.game2d.game.model.Unit?>(null) }
@@ -90,7 +94,14 @@ fun BottomPanel(
     ) {
         Column(
             modifier = Modifier
-                .background(Color(0xFF121212).copy(alpha = 0.85f))
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            colorTheme.bottomPanelGradientStart,
+                            colorTheme.bottomPanelGradientEnd
+                        )
+                    )
+                )
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -130,9 +141,9 @@ fun BottomPanel(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Bench header (có thể kéo xuống để ẩn/hiện)
+        // Bench header (can drag down to hide/show)
         CollapseHeader(
-            title = "Hàng chờ tướng",
+            title = "Bench",
             collapsed = benchCollapsed,
             onToggle = { benchCollapsed = !benchCollapsed },
             onDrag = { dy ->
@@ -157,11 +168,6 @@ fun BottomPanel(
                     draggingUnit = unit
                     isDragging = true
                     dragOffset = position  // Set initial position to center of bench slot
-                    Log.d("BottomPanel", "=== DRAG START ===")
-                    Log.d("BottomPanel", "Unit: ${unit.type.displayName} ${unit.star.symbol}")
-                    Log.d("BottomPanel", "Position from bench: $position")
-                    Log.d("BottomPanel", "Setting dragOffset to: $dragOffset")
-                    Log.d("BottomPanel", "==================/")
                 },
                 onDragEnd = { 
                     draggingUnit = null
@@ -173,27 +179,6 @@ fun BottomPanel(
             )
         }
 
-        // Shop header (có thể kéo xuống để ẩn/hiện)
-        CollapseHeader(
-            title = "Shop mua tướng",
-            collapsed = shopCollapsed,
-            onToggle = { shopCollapsed = !shopCollapsed },
-            onDrag = { dy ->
-                if (dy > 16f) shopCollapsed = true
-                if (dy < -16f) shopCollapsed = false
-            }
-        )
-
-        if (!shopCollapsed) {
-            ShopRow(
-                shop = gameState.shop,
-                playerGold = gameState.player.gold,
-                canBuy = { index -> gameState.canBuyUnit(index) },
-                onBuyUnit = onBuyUnit,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
         // Action buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -201,12 +186,11 @@ fun BottomPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
-                onClick = onRerollShop,
-                enabled = gameState.canReroll(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF03A9F4)),
+                onClick = onOpenShop,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF607D8B)),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                 modifier = Modifier.weight(1f)
-            ) { Text("Reroll") }
+            ) { Text("Shop") }
 
             Button(
                 onClick = onBuyXP,
@@ -214,7 +198,7 @@ fun BottomPanel(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8BC34A)),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                 modifier = Modifier.weight(1f)
-            ) { Text("Mua XP") }
+            ) { Text("Buy XP") }
 
             if (gameState.isInPrep) {
                 Button(
@@ -222,11 +206,13 @@ fun BottomPanel(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722)),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
-                ) { Text("Chiến đấu") }
+                ) { Text("Fight") }
             }
         }
         }
         
+        // Overlay moved to HomeScreen layer
+
         // Drag overlay - shows dragged unit following cursor
         val currentDraggingUnit = draggingUnit // Local copy to avoid smart cast issues
         if (isDragging && currentDraggingUnit != null) {
@@ -241,16 +227,7 @@ fun BottomPanel(
             val relativeDragOffset = dragOffset - bottomPanelPosition
             val overlayX = (relativeDragOffset.x - cardSizeInPx.width / 2f).toInt()
             val overlayY = (relativeDragOffset.y - cardSizeInPx.height / 2f).toInt()
-            
-            Log.d("BottomPanel", "=== OVERLAY DEBUG ===")
-            Log.d("BottomPanel", "dragOffset (root) = $dragOffset")
-            Log.d("BottomPanel", "bottomPanelPosition = $bottomPanelPosition")
-            Log.d("BottomPanel", "relativeDragOffset = $relativeDragOffset")
-            Log.d("BottomPanel", "cardSize = $cardSizeInPx") 
-            Log.d("BottomPanel", "overlayX = $overlayX, overlayY = $overlayY")
-            Log.d("BottomPanel", "Final overlay position: ($overlayX, $overlayY)")
-            Log.d("BottomPanel", "====================/")
-            
+
             Card(
                 modifier = Modifier
                     .offset { 
@@ -277,6 +254,25 @@ fun BottomPanel(
             }
         }
     }
+}
+@Preview
+@Composable
+fun BottomPanelPreview() {
+    BottomPanel(
+        gameState = GameState.sample(),
+        onBuyUnit = { index -> },
+        onSellUnit = { unitId -> },
+        onRerollShop = { },
+        onBuyXP = { },
+        onDeployUnit = { unitId, slot -> },
+        onRecallUnit = { slot -> },
+        onSwapUnit = { unitId, slot -> },
+        onStartCombat = { },
+        colorTheme = ColorTheme.WINTER,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(400.dp)
+    )
 }
 
 

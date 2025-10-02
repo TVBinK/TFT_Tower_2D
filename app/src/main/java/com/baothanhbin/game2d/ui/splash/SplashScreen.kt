@@ -123,14 +123,14 @@ fun SplashScreen(
                         onDifficultySelected(difficulty)
                     }
                 ) {
-                    Text("Bắt đầu")
+                    Text("Start")
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showConfirmDialog = null }
                 ) {
-                    Text("Hủy")
+                    Text("Cancel")
                 }
             }
         )

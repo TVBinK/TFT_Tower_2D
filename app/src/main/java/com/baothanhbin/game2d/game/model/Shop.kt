@@ -13,7 +13,7 @@ data class ShopSlot(
         
         fun withUnit(unit: Unit) = ShopSlot(
             unit = unit,
-            price = unit.tier.cost,
+            price = 1, // Fixed price for all units
             isEmpty = false
         )
     }
@@ -30,20 +30,8 @@ data class Shop(
     companion object {
         const val SHOP_SIZE = 5
         
-        // Odds table theo level - % cho mỗi tier
-        val ODDS_TABLE = mapOf(
-            2 to listOf(100, 0, 0, 0, 0),
-            3 to listOf(75, 25, 0, 0, 0),
-            4 to listOf(55, 30, 15, 0, 0),
-            5 to listOf(45, 33, 20, 2, 0),
-            6 to listOf(25, 40, 30, 5, 0),
-            7 to listOf(19, 30, 35, 15, 1),
-            8 to listOf(15, 25, 35, 20, 5),
-            9 to listOf(10, 20, 35, 25, 10)
-        )
-        
-        // Cache Tier.values() để tránh gọi lại nhiều lần
-        private val tierValues = Tier.values()
+        // Cache HeroType.values() để tránh gọi lại nhiều lần
+        private val heroTypes = HeroType.values()
     }
     
     /**
@@ -81,11 +69,10 @@ data class Shop(
     }
     
     /**
-     * Roll shop mới theo odds
+     * Roll shop mới với random hero types
      */
     fun reroll(playerLevel: Int): Shop {
-        val odds = ODDS_TABLE[playerLevel] ?: ODDS_TABLE[2]!!
-        val newSlots = List(SHOP_SIZE) { generateSlot(odds) }
+        val newSlots = List(SHOP_SIZE) { generateSlot() }
         
         return copy(
             slots = newSlots,
@@ -94,23 +81,12 @@ data class Shop(
     }
     
     /**
-     * Tạo slot mới theo odds
+     * Tạo slot mới với random hero type
      */
-    private fun generateSlot(odds: List<Int>): ShopSlot {
-        val random = (1..100).random()
-        var cumulative = 0
-        
-        for (i in odds.indices) {
-            cumulative += odds[i]
-            if (random <= cumulative) {
-                val tier = tierValues[i]
-                val unit = Unit.createRandom(tier)
-                return ShopSlot.withUnit(unit)
-            }
-        }
-        
-        // Fallback to T1
-        return ShopSlot.withUnit(Unit.createRandom(Tier.T1))
+    private fun generateSlot(): ShopSlot {
+        val randomType = heroTypes.random()
+        val unit = Unit.create(randomType)
+        return ShopSlot.withUnit(unit)
     }
     
     /**

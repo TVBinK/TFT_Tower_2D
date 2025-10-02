@@ -16,14 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baothanhbin.game2d.game.model.*
 
 /**
- * Hàng bench - danh sách units trong kho
+ * Bench row - list of units in storage
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BenchRow(
     player: Player,
@@ -47,13 +47,6 @@ fun BenchRow(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            text = "Hàng chờ tướng (${player.bench.size}/${Player.MAX_BENCH_SIZE})",
-            color = Color(0xFF4CAF50),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
-        )
-        
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -107,61 +100,6 @@ fun BenchRow(
 }
 
 @Composable
-private fun BenchSlot(
-    unit: com.baothanhbin.game2d.game.model.Unit?,
-    canManage: Boolean,
-    isSelected: Boolean,
-    onSelect: () -> kotlin.Unit,
-    onSell: () -> kotlin.Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .then(
-                if (unit != null && canManage) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onSelect() }
-                } else {
-                    Modifier
-                }
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (unit != null) {
-                if (isSelected) Color(0xFF2196F3) else Color(0xFF1E1E1E)
-            } else {
-                Color(0xFF424242)
-            }
-        ),
-        border = if (isSelected) {
-            androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF2196F3))
-        } else {
-            null
-        },
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(6.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (unit != null) {
-                UnitCard(unit = unit)
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Trống",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun UnitActionsRow(
     unit: com.baothanhbin.game2d.game.model.Unit,
     player: Player,
@@ -187,18 +125,14 @@ private fun UnitActionsRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${unit.type.displayName} ${unit.star.symbol} T${unit.tier.name.last()}",
+                    text = "${unit.type.displayName} ${unit.star.symbol}",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
-                
-                TextButton(onClick = onClose) {
-                    Text("Đóng", color = Color.White)
-                }
             }
             
-            // Deploy to board - tìm slot trống đầu tiên
+            // Deploy to board - find first empty slot
             val availableSlot = BoardSlot.values().find { slot ->
                 slot.position < player.deployCap && player.board[slot] == null
             }
@@ -221,7 +155,7 @@ private fun UnitActionsRow(
                     ) {
                         Icon(
                             imageVector = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Triển khai",
+                            contentDescription = "Deploy",
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
@@ -239,7 +173,7 @@ private fun UnitActionsRow(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Bán ${unit.sellPrice}g",
+                        text = "Sell ${unit.sellPrice}g",
                         fontSize = 12.sp
                     )
                 }

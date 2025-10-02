@@ -10,6 +10,8 @@ class CombatSystem {
     
     private val effectSystem = EffectSystem()
     private val soundSystem = SoundSystem()
+    // Giảm tốc độ ra đạn bằng cách tăng cooldown mỗi lần bắn
+    private val FIRE_RATE_MULTIPLIER: Float = 3.0f
     
     /**
      * Cập nhật cooldowns của tất cả units trên board
@@ -60,8 +62,7 @@ class CombatSystem {
         
         for ((slot, unit) in state.player.board) {
             if (unit == null || unit.cooldownRemainingMs > 0) continue
-            // Thêm delay khởi động: yêu cầu mana đầu trận phải tích lũy đủ trước khi bắn
-            if (currentPlayer.currentMana < unit.manaCost) continue
+            // Không chặn sớm theo mana để tránh ảnh hưởng slot khác; hệ cần mana sẽ tự kiểm tra bên trong
             
             // Kiểm tra có đủ mana để bắn không (đã check trước)
             
@@ -70,24 +71,102 @@ class CombatSystem {
             
             if (target != null) {
                 // Hệ Hỏa: tạo hàng lửa thay vì bắn đạn
-                if (unit.type == HeroType.HOA) {
+                if (unit.type == HeroType.FIRE) {
                     val fireDuration = 20000L // lâu hơn
                     val fireDps = unit.actualDamage * 2f
-                    updatedState = effectSystem.addFireRow(updatedState, slot, fireDuration, fireDps, thickness = 90f)
+                    // Tăng chiều cao cột lửa
+                    val fireThickness = 150f
+                    updatedState = effectSystem.addFireRow(updatedState, slot, fireDuration, fireDps, thickness = fireThickness)
                     val updatedUnit = unit.copy(
-                        cooldownRemainingMs = unit.actualFireRateMs,
+                        cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
                         lastShotAtMs = System.currentTimeMillis()
                     )
                     updatedBoard[slot] = updatedUnit
                     continue
                 }
-                // Sử dụng mana để bắn
-                val manaUsed = currentPlayer.useMana(unit.manaCost)
-                if (manaUsed == null) {
-                    println("FAILED TO USE MANA! Unit needs ${unit.manaCost} mana")
+                // Hệ Thủy: tạo cơn sóng đẩy lùi địch (có cooldown riêng cho wave)
+                else if (unit.type == HeroType.WATER) {
+                    // Kiểm tra cooldown của wave (dài hơn cooldown bắn thường)
+                    val waveCooldownMs = unit.actualFireRateMs * 5L // Cooldown wave = 5x cooldown bắn thường (tăng từ 3x)
+                    val timeSinceLastWave = System.currentTimeMillis() - unit.lastWaveAtMs
+                    
+                    android.util.Log.d("THUY_WAVE", "🌊 THUY Wave Check: timeSinceLastWave=${timeSinceLastWave}ms, waveCooldownMs=${waveCooldownMs}ms, canCreateWave=${timeSinceLastWave >= waveCooldownMs}")
+                    
+                    if (timeSinceLastWave >= waveCooldownMs) {
+                        val waveDuration = 3000L // 3 giây (giảm từ 8 giây)
+                        val waveHeight = 200f // Chiều cao sóng giảm (từ 400f)
+                        updatedState = effectSystem.addWave(updatedState, slot, waveDuration, waveHeight)
+                        
+                        android.util.Log.d("THUY_WAVE", "🌊 THUY Wave CREATED! Height=${waveHeight}")
+                        
+                        // Cập nhật lastWaveAtMs khi tạo wave
+                        val updatedUnit = unit.copy(
+                            cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
+                            lastShotAtMs = System.currentTimeMillis(),
+                            lastWaveAtMs = System.currentTimeMillis()
+                        )
+                        updatedBoard[slot] = updatedUnit
+                    } else {
+                        android.util.Log.d("THUY_WAVE", "🌊 THUY Wave COOLDOWN: ${waveCooldownMs - timeSinceLastWave}ms remaining")
+                        
+                        // Không tạo wave, chỉ cập nhật cooldown bắn thường
+                        val updatedUnit = unit.copy(
+                            cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
+                            lastShotAtMs = System.currentTimeMillis()
+                        )
+                        updatedBoard[slot] = updatedUnit
+                    }
                     continue
                 }
-                currentPlayer = manaUsed
+                // Hệ Mộc: không bắn – chỉ hồi máu (xử lý trong GameEngine)
+                else if (unit.type == HeroType.FLOWER) {
+                    val updatedUnit = unit.copy(
+                        cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
+                        lastShotAtMs = System.currentTimeMillis()
+                    )
+                    updatedBoard[slot] = updatedUnit
+                    continue
+                }
+                // Hệ Băng: bắn đạn băng
+                else if (unit.type == HeroType.ICE) {
+                    // Bỏ yêu cầu mana: mọi unit đều có thể dùng skill/bắn
+                    
+                    // Tạo bullet băng từ vị trí tướng
+                    val (baseX, baseY) = getUnitPosition(slot)
+                    val bulletX = baseX
+                    val bulletY = baseY
+                    
+                    // Giảm số viên bắn mỗi lượt một chút để tổng lượng đạn ít hơn
+                    val bulletsPerShot = 1 // Cố định 1 viên cho ICE
+                    // Spread góc nhẹ để fan ra, tâm vẫn hướng về target
+                    val baseAngle = kotlin.math.atan2((target.y - bulletY), (target.x - bulletX))
+                    val totalSpread = 0.30f // ~17 độ tổng
+                    val step = if (bulletsPerShot > 1) totalSpread / (bulletsPerShot - 1) else 0f
+                    val startAngle = baseAngle - totalSpread / 2f
+
+                    repeat(bulletsPerShot) { index ->
+                        val angle = startAngle + index * step
+                        val range = 60f // giữ nguyên tầm bắn
+                        val tx = bulletX + kotlin.math.cos(angle) * range
+                        val ty = bulletY + kotlin.math.sin(angle) * range
+                        val b = Bullet.create(unit, bulletX, bulletY, target.copy(x = tx, y = ty))
+                        newBullets.add(b)
+                    }
+                    
+                    // Thêm hiệu ứng lửa nòng súng
+                    updatedState = effectSystem.addMuzzleFlashEffect(updatedState, unit, slot)
+                    
+                    // Phát âm thanh bắn
+                    soundSystem.playShootSound(unit)
+                    
+                    val updatedUnit = unit.copy(
+                        cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
+                        lastShotAtMs = System.currentTimeMillis()
+                    )
+                    updatedBoard[slot] = updatedUnit
+                    continue
+                }
+                // Bỏ yêu cầu mana cho các hệ còn lại
                 
                 // Tạo bullet thẳng từ vị trí tướng
                 val (baseX, baseY) = getUnitPosition(slot)
@@ -95,7 +174,7 @@ class CombatSystem {
                 val bulletY = baseY
                 
                 // Giảm số viên bắn mỗi lượt một chút để tổng lượng đạn ít hơn
-                val bulletsPerShot = kotlin.math.max(1, unit.tier.cost - 1)
+                val bulletsPerShot = 1 // Cố định 1 viên cho các hệ khác
                 // Spread góc nhẹ để fan ra, tâm vẫn hướng về target
                 val baseAngle = kotlin.math.atan2((target.y - bulletY), (target.x - bulletX))
                 val totalSpread = 0.30f // ~17 độ tổng
@@ -124,7 +203,7 @@ class CombatSystem {
                 
                 // Reset cooldown và đánh dấu thời điểm bắn
                 val updatedUnit = unit.copy(
-                    cooldownRemainingMs = unit.actualFireRateMs,
+                    cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
                     lastShotAtMs = System.currentTimeMillis()
                 )
                 updatedBoard[slot] = updatedUnit
@@ -134,68 +213,6 @@ class CombatSystem {
         return updatedState.copy(
             bullets = state.bullets + newBullets,
             player = currentPlayer.copy(board = updatedBoard)
-        )
-    }
-    
-    /**
-     * Player bắn thủ công (khi tap)
-     */
-    fun manualShoot(state: GameState, slot: BoardSlot): GameState {
-        val unit = state.player.board[slot] ?: return state
-        if (unit.cooldownRemainingMs > 0) return state
-        
-        val enemies = state.enemies.filter { it.isAlive }
-        val target = findNearestEnemyInRange(unit, enemies, slot)
-        
-        if (target == null) {
-            println("NO TARGET FOUND for manual shoot at slot $slot")
-            return state
-        }
-        
-        // Kiểm tra mana
-        if (state.player.currentMana < unit.manaCost) {
-            println("NOT ENOUGH MANA for manual shoot! Need ${unit.manaCost}, have ${state.player.currentMana}")
-            return state
-        }
-        
-        // Sử dụng mana
-        val updatedPlayer = state.player.useMana(unit.manaCost) ?: return state
-        
-        // Tạo bullet
-        val (baseX, baseY) = getUnitPosition(slot)
-        val randomOffsetX = (Math.random() * 10f - 5f).toFloat()
-        val randomOffsetY = (Math.random() * 5f - 2.5f).toFloat()
-        val bulletX = baseX + randomOffsetX
-        val bulletY = baseY + randomOffsetY
-        
-        val bulletsPerShot = unit.tier.cost.coerceIn(1, 5)
-        val baseAngle = kotlin.math.atan2((target.y - bulletY), (target.x - bulletX))
-        val totalSpread = 0.30f
-        val step = if (bulletsPerShot > 1) totalSpread / (bulletsPerShot - 1) else 0f
-        val startAngle = baseAngle - totalSpread / 2f
-
-        val newBullets = mutableListOf<Bullet>()
-        repeat(bulletsPerShot) { index ->
-            val angle = startAngle + index * step
-            val range = 60f
-            val tx = bulletX + kotlin.math.cos(angle) * range
-            val ty = bulletY + kotlin.math.sin(angle) * range
-            val b = Bullet.create(unit, bulletX, bulletY, target.copy(x = tx, y = ty))
-            newBullets.add(b)
-        }
-        
-        // Reset cooldown và đánh dấu thời điểm bắn
-        val updatedUnit = unit.copy(
-            cooldownRemainingMs = unit.actualFireRateMs,
-            lastShotAtMs = System.currentTimeMillis()
-        )
-        val updatedBoard = state.player.board.toMutableMap().apply { put(slot, updatedUnit) }
-        
-        println("MANUAL SHOOT! Unit at slot $slot - Mana used: ${unit.manaCost}, Remaining: ${updatedPlayer.currentMana}")
-        
-        return state.copy(
-            bullets = state.bullets + newBullets,
-            player = updatedPlayer.copy(board = updatedBoard)
         )
     }
     
@@ -332,7 +349,9 @@ class CombatSystem {
         val deltaTimeSeconds = deltaTimeMs / 1000f
         
         val updatedEnemies = state.enemies.map { enemy ->
-            enemy.moveDown(deltaTimeSeconds)
+            // Cập nhật trạng thái đóng băng và làm chậm trước khi di chuyển
+            val statusUpdatedEnemy = enemy.updateStatus()
+            statusUpdatedEnemy.moveDown(deltaTimeSeconds)
         }
         
         return state.copy(enemies = updatedEnemies)
@@ -364,6 +383,25 @@ class CombatSystem {
                     currentEnemy = currentEnemy.takeDamage(bullet.damage)
                     bulletsToRemove.add(bullet.id)
                     hit = true
+                    
+                    // Xử lý đặc biệt cho đạn băng
+                    if (bullet.heroType == HeroType.ICE) {
+                        // Làm chậm enemy (100% chance)
+                        currentEnemy = currentEnemy.slow(2000L, 0.3f) // 2 giây, tốc độ còn 30%
+                        
+                        // Tỷ lệ đóng băng (30% chance)
+                        val freezeChance = 0.3f
+                        if (kotlin.random.Random.nextFloat() < freezeChance) {
+                            currentEnemy = currentEnemy.freeze(1500L) // 1.5 giây đóng băng
+                            
+                            // Thêm hiệu ứng đóng băng
+                            updatedState = effectSystem.addEffect(updatedState, Effect.createFreeze(currentEnemy.x, currentEnemy.y, 1500L))
+                            
+                            println("❄️ FREEZE! Enemy ${currentEnemy.id} frozen for 1.5s")
+                        } else {
+                            println("❄️ SLOW! Enemy ${currentEnemy.id} slowed for 2s")
+                        }
+                    }
                     
                     // Thêm hiệu ứng va chạm
                     updatedState = effectSystem.addHitEffect(updatedState, bullet, currentEnemy)

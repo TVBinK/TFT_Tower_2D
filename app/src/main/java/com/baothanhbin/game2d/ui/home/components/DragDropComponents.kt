@@ -26,13 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.util.Log
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.unit.toSize
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Star
@@ -66,19 +61,43 @@ fun AnimatedUnitImage(
     }
 
     val painter = when (unit.type) {
-        HeroType.KIM -> {
+        HeroType.METAL -> {
             val resId = if (isShooting) {
-                if (frameIndex == 0) R.drawable.hero_kim1 else R.drawable.hero_kim2
+                if (frameIndex == 0) R.drawable.hero_metal1 else R.drawable.hero_metal2
             } else {
-                R.drawable.hero_kim1
+                R.drawable.hero_metal1
             }
             painterResource(id = resId)
         }
-        HeroType.HOA -> {
+        HeroType.FLOWER -> {
             val resId = if (isShooting) {
-                if (frameIndex == 0) R.drawable.hero_hoa1 else R.drawable.hero_hoa2
+                if (frameIndex == 0) R.drawable.hero_flower1 else R.drawable.hero_flower2
             } else {
-                R.drawable.hero_hoa1
+                R.drawable.hero_flower1
+            }
+            painterResource(id = resId)
+        }
+        HeroType.FIRE -> {
+            val resId = if (isShooting) {
+                if (frameIndex == 0) R.drawable.hero_fire1 else R.drawable.hero_fire2
+            } else {
+                R.drawable.hero_fire1
+            }
+            painterResource(id = resId)
+        }
+        HeroType.WATER -> {
+            val resId = if (isShooting) {
+                if (frameIndex == 0) R.drawable.hero_water1 else R.drawable.hero_water2
+            } else {
+                R.drawable.hero_water1
+            }
+            painterResource(id = resId)
+        }
+        HeroType.ICE -> {
+            val resId = if (isShooting) {
+                if (frameIndex == 0) R.drawable.hero_ice1 else R.drawable.hero_ice2
+            } else {
+                R.drawable.hero_ice1
             }
             painterResource(id = resId)
         }
@@ -94,7 +113,7 @@ fun AnimatedUnitImage(
 }
 
 /**
- * Component kéo thả cho bench units
+ * Draggable component for bench units
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -121,11 +140,6 @@ fun DraggableBenchSlot(
         if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
             isPositioned = true
         }
-    }
-    
-    // Test onDragUpdate callback
-    LaunchedEffect(Unit) {
-        Log.d("DragBench", "🔧 SETUP: onDragUpdate callback = ${onDragUpdate}")
     }
     
     Card(
@@ -207,64 +221,22 @@ fun DraggableBenchSlot(
             modifier = Modifier.fillMaxSize()
         ) {
             if (unit != null) {
-				// Ảnh động: thay khung hình theo thời gian để tạo chuyển động
-				AnimatedUnitImage(
-					unit = unit,
-					modifier = Modifier
-						.fillMaxSize()
-						.padding(2.dp),
-					contentScale = ContentScale.FillBounds,
-					isShooting = false
-				)
-                
-                // Stars overlay ở góc trên bên phải
-                Box(
+                // Use UnitCard like Shop for consistent visuals
+                UnitCard(
+                    unit = unit,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(1.dp)
-                    ) {
-                        repeat(unit.star.value) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Star",
-                                tint = Color(0xFFFFD700),
-                                modifier = Modifier.size(8.dp)
-                            )
-                        }
-                    }
-                }
-                
-                // Tier overlay ở góc dưới bên trái
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(4.dp)
-                ) {
-                    Text(
-                        text = "T${unit.tier.name.last()}",
-                        color = Color.White,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .background(
-                                color = Color.Black.copy(alpha = 0.7f),
-                                shape = RoundedCornerShape(3.dp)
-                            )
-                            .padding(horizontal = 3.dp, vertical = 1.dp)
-                    )
-                }
+                        .fillMaxSize()
+                        .padding(2.dp)
+                )
             } else {
-                // Empty slot với icon add
+                // Empty slot with add icon
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = androidx.compose.material.icons.Icons.Default.Add,
-                        contentDescription = "Trống",
+                        contentDescription = "Empty",
                         tint = Color.Gray,
                         modifier = Modifier.size(16.dp)
                     )
@@ -275,7 +247,7 @@ fun DraggableBenchSlot(
 }
 
 /**
- * Component kéo thả cho board slots
+ * Draggable component for board slots
  */
 @Composable
 fun DraggableBoardSlot(
@@ -298,7 +270,6 @@ fun DraggableBoardSlot(
     
     Card(
         modifier = modifier
-            .aspectRatio(0.9f)
             .onGloballyPositioned { coordinates ->
                 slotPosition = coordinates.positionInWindow()
                 slotSize = coordinates.size.toSize()
@@ -323,21 +294,14 @@ fun DraggableBoardSlot(
                     // For empty slots or non-manageable units, only handle tap
                     detectTapGestures(
                         onTap = {
-                            Log.d("BoardSlot", "🖱️ TAP: Slot ${slot.name}")
-                            Log.d("BoardSlot", "🔍 TAP CHECK: selectedUnit=${selectedUnit?.id}, canManage=$canManage, isActive=$isActive, unit=${unit?.id}")
-                            
+
                             // Check if this is a normal deploy operation
                             if (selectedUnit != null && canManage && isActive && unit == null) {
-                                Log.d("BoardSlot", "✅ DEPLOY: Unit ${selectedUnit.id} to slot ${slot.name}")
                                 onDeploy(selectedUnit.id)
                             }
                             // Check if this is a recall operation
                             else if (unit != null && canManage) {
-                                Log.d("BoardSlot", "✅ RECALL: From slot ${slot.name}")
                                 onRecall()
-                            }
-                            else {
-                                Log.d("BoardSlot", "❌ NO TAP ACTION: Conditions not met")
                             }
                         }
                     )
@@ -363,27 +327,26 @@ fun DraggableBoardSlot(
                 }
             ),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                !isActive -> Color(0xFF424242).copy(alpha = 0.5f)
-                selectedUnit != null && unit == null -> Color(0xFF4CAF50).copy(alpha = 0.3f)
-                unit != null -> Color(unit.type.color).copy(alpha = 0.2f) // Màu theo tướng đang đặt
-                else -> Color(0xFF2196F3).copy(alpha = 0.2f) // Màu xanh dương mặc định cho slot trống
-            }
+            containerColor = Color.Transparent
         ),
-        border = when {
-            !isActive -> BorderStroke(1.dp, Color.Gray)
-            selectedUnit != null && unit == null -> BorderStroke(3.dp, Color(0xFF4CAF50))
-            unit != null -> BorderStroke(2.dp, Color(unit.type.color)) // Border theo màu tướng
-            else -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-        },
+        // No thick border to match Shop/Bench (UnitCard is clear enough)
+        border = null,
         shape = RoundedCornerShape(8.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
+            // Background slot image
+            Image(
+                painter = painterResource(id = R.drawable.slot),
+                contentDescription = "Slot background",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (isActive) 1f else 0.5f),
+                contentScale = ContentScale.FillBounds
+            )
             if (unit != null) {
-				// Ảnh động: thay khung hình theo thời gian để tạo chuyển động
-				// Chỉ animate khi đang bắn: tạo một cửa sổ ngắn ngay sau khi bắn
+                // Show UnitCard with shooting state to switch frames when firing
                 val shootingWindowMs = 250L
                 var nowMs by remember(unit.id) { mutableStateOf(System.currentTimeMillis()) }
                 LaunchedEffect(unit.id) {
@@ -393,56 +356,16 @@ fun DraggableBoardSlot(
                     }
                 }
                 val isShooting = (nowMs - unit.lastShotAtMs) <= shootingWindowMs
-				AnimatedUnitImage(
-					unit = unit,
-					modifier = Modifier
-						.fillMaxSize()
-						.padding(2.dp),
-					contentScale = ContentScale.FillBounds,
-					isShooting = isShooting
-				)
-                
-                // Stars overlay ở góc trên bên phải
-                Box(
+
+                UnitCard(
+                    unit = unit,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(1.dp)
-                    ) {
-                        repeat(unit.star.value) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Star",
-                                tint = Color(0xFFFFD700),
-                                modifier = Modifier.size(8.dp)
-                            )
-                        }
-                    }
-                }
+                        .fillMaxSize()
+                        .padding(2.dp),
+                    isShooting = isShooting
+                )
                 
-                // Tier overlay ở góc dưới bên trái
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(4.dp)
-                ) {
-                    Text(
-                        text = "T${unit.tier.name.last()}",
-                        color = Color.White,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .background(
-                                color = Color.Black.copy(alpha = 0.7f),
-                                shape = RoundedCornerShape(3.dp)
-                            )
-                            .padding(horizontal = 3.dp, vertical = 1.dp)
-                    )
-                }
-                
-                // Cooldown indicator overlay ở dưới cùng
+                // Cooldown indicator overlay at bottom
                 if (unit.cooldownRemainingMs > 0) {
                     val progress = 1f - (unit.cooldownRemainingMs.toFloat() / unit.actualFireRateMs.toFloat())
                     Box(
@@ -461,111 +384,41 @@ fun DraggableBoardSlot(
                     }
                 }
             } else {
+                // Empty slot - show slot number and status on top of background
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = "Slot ${slot.position + 1}",
-                        color = if (isActive) Color.White else Color.Gray,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Spacer(modifier = Modifier.weight(1f))
                     
                     if (!isActive) {
                         Text(
-                            text = "Cần level ${slot.position + 1}",
+                            text = "Need level ${slot.position + 1}",
                             color = Color.Gray,
-                            fontSize = 8.sp
+                            fontSize = 8.sp,
+                            modifier = Modifier
+                                .background(
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
                         )
                     } else if (selectedUnit != null && unit == null) {
                         Text(
-                            text = "Click để deploy",
+                            text = "Click to deploy",
                             color = Color(0xFF4CAF50),
                             fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Component hiển thị unit đang được kéo
- */
-@Composable
-fun DraggingUnitOverlay(
-    unit: com.baothanhbin.game2d.game.model.Unit?,
-    isDragging: Boolean,
-    modifier: Modifier = Modifier
-) {
-    if (unit != null && isDragging) {
-        Box(
-            modifier = modifier
-                .zIndex(20f)
-                .alpha(0.9f)
-                .scale(1.2f)
-        ) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF1976D2).copy(alpha = 0.9f)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 80.dp, height = 100.dp)
-                ) {
-					// Ảnh động cho overlay kéo thả
-					AnimatedUnitImage(
-						unit = unit,
-						modifier = Modifier
-							.fillMaxSize()
-							.padding(4.dp),
-						contentScale = ContentScale.FillBounds,
-						isShooting = false
-					)
-                    
-                    // Stars overlay ở góc trên bên phải
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(6.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(1.dp)
-                        ) {
-                            repeat(unit.star.value) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Star",
-                                    tint = Color(0xFFFFD700),
-                                    modifier = Modifier.size(10.dp)
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Tier overlay ở góc dưới bên trái
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(6.dp)
-                    ) {
-                        Text(
-                            text = "T${unit.tier.name.last()}",
-                            color = Color.White,
-                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
                                 .background(
-                                    color = Color.Black.copy(alpha = 0.7f),
+                                    color = Color.Black.copy(alpha = 0.6f),
                                     shape = RoundedCornerShape(4.dp)
                                 )
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         )
                     }
+                    
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -573,48 +426,13 @@ fun DraggingUnitOverlay(
 }
 
 /**
- * Component hiển thị drop zone
- */
-@Composable
-fun DropZoneIndicator(
-    isVisible: Boolean,
-    modifier: Modifier = Modifier
-) {
-    if (isVisible) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(Color(0xFF4CAF50).copy(alpha = 0.3f))
-                .zIndex(5f)
-        ) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF4CAF50).copy(alpha = 0.9f)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = "Thả tướng vào đây",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * Component hiển thị unit với ảnh golden thay vì text
+ * Component displaying unit with golden image instead of text
  */
 @Composable
 fun UnitCard(
     unit: com.baothanhbin.game2d.game.model.Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isShooting: Boolean = false
 ) {
     Box(
         modifier = modifier
@@ -629,17 +447,17 @@ fun UnitCard(
                 shape = RoundedCornerShape(6.dp)
             )
     ) {
-		// Ảnh động lấp đầy toàn bộ card
-		AnimatedUnitImage(
+		// Animated image fills the entire card
+        AnimatedUnitImage(
 			unit = unit,
 			modifier = Modifier
 				.fillMaxSize()
 				.padding(1.dp),
 			contentScale = ContentScale.FillBounds,
-			isShooting = false
+            isShooting = isShooting
 		)
         
-        // Stars overlay ở góc trên bên phải
+        // Stars overlay at top-right
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -659,14 +477,14 @@ fun UnitCard(
             }
         }
         
-        // Tier overlay ở góc dưới bên trái
+        // Star overlay at bottom-left
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(2.dp)
         ) {
             Text(
-                text = "T${unit.tier.name.last()}",
+                text = unit.star.symbol,
                 color = Color.White,
                 fontSize = 6.sp,
                 fontWeight = FontWeight.Bold,
@@ -686,8 +504,7 @@ fun UnitCard(
 fun DraggableBenchSlotPreview() {
     DraggableBenchSlot(
         unit = com.baothanhbin.game2d.game.model.Unit.create(
-            type = HeroType.KIM,
-            tier = Tier.T2
+            type = HeroType.METAL
         ),
         canManage = true,
         isSelected = false,

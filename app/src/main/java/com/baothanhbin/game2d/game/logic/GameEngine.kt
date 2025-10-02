@@ -136,7 +136,21 @@ class GameEngine(
         
         // Check if enemies reached bottom
         newState = combatSystem.checkEnemiesReachedBottom(newState)
-        
+
+        // Mộc: hồi 1 HP mỗi 7s nếu có ít nhất một tướng Mộc trên board
+        val hasFLOWER = newState.player.board.values.any { it?.type == com.baothanhbin.game2d.game.model.HeroType.FLOWER }
+        if (hasFLOWER) {
+            val accum = newState.mocRegenAccumMs + deltaTimeMs
+            if (accum >= 7000L) {
+                val healedPlayer = newState.player.copy(lives = (newState.player.lives + 1).coerceAtMost(100))
+                newState = newState.copy(player = healedPlayer, mocRegenAccumMs = accum - 7000L)
+            } else {
+                newState = newState.copy(mocRegenAccumMs = accum)
+            }
+        } else if (newState.mocRegenAccumMs != 0L) {
+            newState = newState.copy(mocRegenAccumMs = 0L)
+        }
+
         return newState
     }
     
@@ -152,7 +166,7 @@ class GameEngine(
         unit ?: return
         
         val newPlayer = currentState.player
-            .copy(gold = currentState.player.gold - unit.tier.cost)
+            .copy(gold = currentState.player.gold - 1) // Fixed cost
             .addToBench(unit) ?: return
         
         // Auto-merge after buying

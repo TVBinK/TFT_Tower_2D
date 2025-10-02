@@ -31,14 +31,14 @@ class MergeSystem {
         // Lấy tất cả units từ bench và board
         val allUnits = getAllUnitsFromPlayer(player)
         
-        // Group theo (type, tier, star)
+        // Group theo (type, star)
         val groupedUnits = allUnits.groupBy { unit: com.baothanhbin.game2d.game.model.Unit -> 
-            Triple(unit.type, unit.tier, unit.star) 
+            Pair(unit.type, unit.star) 
         }
         
         // Tìm group có thể merge (≥3 units cùng loại và star < 3)
         for ((key, units) in groupedUnits) {
-            val (type, tier, star) = key
+            val (type, star) = key
             
             if (units.size >= 3 && star != Star.THREE) {
                 // Thực hiện merge
@@ -170,7 +170,6 @@ class MergeSystem {
         val first = units.first()
         return units.all { unit: com.baothanhbin.game2d.game.model.Unit -> 
             unit.type == first.type && 
-            unit.tier == first.tier && 
             unit.star == first.star &&
             unit.star != Star.THREE
         }
@@ -183,7 +182,7 @@ class MergeSystem {
         val allUnits = getAllUnitsFromPlayer(player)
         
         val groupedUnits = allUnits.groupBy { unit: com.baothanhbin.game2d.game.model.Unit -> 
-            Triple(unit.type, unit.tier, unit.star) 
+            Pair(unit.type, unit.star) 
         }
         
         return groupedUnits.values.filter { units: List<com.baothanhbin.game2d.game.model.Unit> ->

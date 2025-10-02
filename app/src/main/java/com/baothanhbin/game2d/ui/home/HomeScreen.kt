@@ -2,14 +2,11 @@ package com.baothanhbin.game2d.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import com.baothanhbin.game2d.game.model.ColorTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalContext
 import com.baothanhbin.game2d.game.GameViewModel
 import com.baothanhbin.game2d.game.model.Difficulty
 import com.baothanhbin.game2d.ui.home.components.*
@@ -36,6 +33,8 @@ fun HomeScreen(
         }
     }
     
+    var showShopOverlay by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -73,6 +72,8 @@ fun HomeScreen(
                 onRecallUnit = viewModel::recallUnit,
                 onSwapUnit = viewModel::swapUnit,
                 onStartCombat = viewModel::startCombat,
+                onOpenShop = { showShopOverlay = true },
+                colorTheme = ColorTheme.WINTER, // TODO: Sẽ được thay đổi động dựa trên map được chọn
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -95,5 +96,14 @@ fun HomeScreen(
                 onBackToSplash = onBackToSplash
             )
         }
+
+        // Shop bottom bar overlay drawn above everything
+        ShopBottomBar(
+            visible = showShopOverlay,
+            gameState = gameState,
+            onReroll = viewModel::rerollShop,
+            onBuyUnit = viewModel::buyUnit,
+            onClose = { showShopOverlay = false }
+        )
     }
 }

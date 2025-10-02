@@ -19,12 +19,24 @@ data class GameState(
     val roundNumber: Int = 1,
     val enemiesSpawned: Int = 0, // Số quái đã spawn trong vòng này
     val enemiesKilled: Int = 0,  // Số quái đã bị tiêu diệt trong vòng này
-    val totalEnemiesPerRound: Int = 5 // Tổng số quái mỗi vòng
+    val totalEnemiesPerRound: Int = 5, // Tổng số quái mỗi vòng
+    // Tích lũy thời gian để hồi máu cho hệ Mộc trong combat
+    val mocRegenAccumMs: Long = 0L
 ) {
     
     companion object {
         const val SCREEN_WIDTH = 1080f
         const val SCREEN_HEIGHT = 1920f
+
+        /**
+         * Tạo GameState mẫu dùng cho Preview UI
+         */
+        fun sample(): GameState {
+            val base = GameState()
+            // Roll shop ban đầu để có dữ liệu hiển thị
+            val rolledShop = base.shop.initialRoll(base.player.level)
+            return base.copy(shop = rolledShop)
+        }
     }
     
     /**
@@ -32,12 +44,6 @@ data class GameState(
      */
     val isInPrep: Boolean
         get() = roundPhase == RoundPhase.PREP
-    
-    /**
-     * Có đang trong pha combat không
-     */
-    val isInCombat: Boolean
-        get() = roundPhase == RoundPhase.COMBAT
     
     /**
      * Số enemy còn sống

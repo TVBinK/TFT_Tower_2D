@@ -21,14 +21,48 @@ class EffectSystem {
                 val rowBottom = effect.y + effect.size / 2f
                 val damaged = newState.enemies.map { e ->
                     if (e.isAlive && e.y in rowTop..rowBottom) {
-                        // Enemy bị cháy - trừ máu theo thời gian 1% maxHp mỗi giây
-                        val damageThisTick = 0.01f * e.maxHp * seconds
+                        // Enemy bị cháy - trừ máu theo thời gian 5% maxHp mỗi giây
+                        val damageThisTick = 0.05f * e.maxHp * seconds
                         e.takeDamage(damageThisTick)
                     } else e
                 }
                 newState = newState.copy(enemies = damaged)
+                effect.update(deltaTimeMs)
             }
-            effect.update(deltaTimeMs)
+            // Xử lý WAVE - đẩy lùi enemy (hàng ngang) - chỉ đẩy 1 lần mỗi enemy
+            else if (effect.type == EffectType.WAVE) {
+                val waveHeight = effect.size * effect.scale // Chiều cao của hàng
+                val waveWidth = effect.width * effect.scale // Chiều rộng của hàng
+                val waveY = effect.y
+                val waveLeft = effect.x
+                val waveRight = effect.x + waveWidth
+                val waveTop = waveY - waveHeight / 2f
+                val waveBottom = waveY + waveHeight / 2f
+                
+                var newKnockedBackEnemies = effect.knockedBackEnemies
+                val knockedBack = newState.enemies.map { e ->
+                    if (e.isAlive) {
+                        // Kiểm tra enemy có trong vùng hàng ngang và chưa bị đẩy chưa
+                        val inHorizontalRange = e.x >= waveLeft && e.x <= waveRight
+                        val inVerticalRange = e.y >= waveTop && e.y <= waveBottom
+                        val notYetKnockedBack = !effect.knockedBackEnemies.contains(e.id)
+                        
+                        if (inHorizontalRange && inVerticalRange && notYetKnockedBack) {
+                            // Đẩy lùi enemy lên cao (giảm y) - sóng đẩy từ dưới lên trên
+                            val knockbackForce = 100f // Lực đẩy lên cao
+                            newKnockedBackEnemies = newKnockedBackEnemies + e.id
+                            e.copy(y = e.y - knockbackForce)
+                        } else e
+                    } else e
+                }
+                newState = newState.copy(enemies = knockedBack)
+                
+                // Trả về effect đã cập nhật với danh sách enemy đã bị đẩy
+                effect.copy(knockedBackEnemies = newKnockedBackEnemies).update(deltaTimeMs)
+            }
+            else {
+                effect.update(deltaTimeMs)
+            }
         }.filter { !it.isFinished }
         
         return newState.copy(effects = updatedEffects)
@@ -76,9 +110,26 @@ class EffectSystem {
     fun addFireRow(state: GameState, slot: BoardSlot, durationMs: Long, dps: Float, thickness: Float = 30f): GameState {
         val (_, unitY) = getUnitPosition(slot)
         // Đặt hàng lửa cao hơn so với bottom panel (dịch lên trên xa hơn)
-        val fireY = (unitY - 500f).coerceAtLeast(0f)
+        val fireY = (unitY - 1000f).coerceAtLeast(0f)
         val fire = Effect.createFireRow(y = fireY, durationMs = durationMs, dps = dps, thickness = thickness)
         return state.copy(effects = state.effects + fire)
+    }
+    
+    /**
+     * Tạo cơn sóng dạng hàng ngang, chạy từ đáy lên đầu sàn đấu
+     */
+    fun addWave(state: GameState, slot: BoardSlot, durationMs: Long, height: Float = 800f): GameState {
+        // Sóng bắt đầu từ đáy màn hình (Y cao) và chạy lên đầu (Y thấp)
+        val startY = GameState.SCREEN_HEIGHT - 100f // Đáy màn hình
+        val endY = 100f // Đầu màn hình
+        val wave = Effect.createWave(
+            startY = startY, 
+            endY = endY, 
+            durationMs = durationMs * 2L, // Tăng gấp đôi thời gian di chuyển để giảm tốc độ
+            width = GameState.SCREEN_WIDTH, // Toàn bộ chiều rộng màn hình
+            height = height
+        )
+        return state.copy(effects = state.effects + wave)
     }
     
     /**
@@ -108,6 +159,15 @@ class EffectSystem {
         
         return state.copy(
             effects = state.effects + trail
+        )
+    }
+    
+    /**
+     * Thêm hiệu ứng generic
+     */
+    fun addEffect(state: GameState, effect: Effect): GameState {
+        return state.copy(
+            effects = state.effects + effect
         )
     }
     

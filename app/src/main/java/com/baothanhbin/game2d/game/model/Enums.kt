@@ -9,16 +9,6 @@ enum class Star(val value: Int, val symbol: String) {
     THREE(3, "★★★")
 }
 
-/**
- * Tier của tướng (giá mua và độ hiếm)
- */
-enum class Tier(val cost: Int, val displayName: String) {
-    T1(1, "Tier 1"),
-    T2(2, "Tier 2"),
-    T3(3, "Tier 3"),
-    T4(4, "Tier 4"),
-    T5(5, "Tier 5")
-}
 
 /**
  * Độ khó game

@@ -17,7 +17,13 @@ data class Effect(
     val rotation: Float = 0f,
     val scale: Float = 1f,
     val alpha: Float = 1f,
-    val damagePerSecond: Float = 0f
+    val damagePerSecond: Float = 0f,
+    // Thêm thuộc tính cho wave di chuyển
+    val startY: Float = y, // Vị trí bắt đầu
+    val endY: Float = y,   // Vị trí kết thúc
+    val speed: Float = 0f,  // Tốc độ di chuyển (pixel/ms)
+    val width: Float = size, // Chiều rộng của hàng (cho wave dạng hàng ngang)
+    val knockedBackEnemies: Set<String> = emptySet() // Danh sách enemy đã bị đẩy lùi de khong bi lap lai
 ) {
     
     /**
@@ -33,8 +39,22 @@ data class Effect(
         val newTime = currentTimeMs + deltaTimeMs
         val progress = (newTime.toFloat() / durationMs).coerceIn(0f, 1f)
         
+        // Tính vị trí mới cho wave di chuyển
+        val newY = when (type) {
+            EffectType.WAVE -> {
+                if (speed > 0f) {
+                    // Di chuyển từ startY đến endY
+                    startY + (endY - startY) * progress
+                } else {
+                    y // Giữ nguyên vị trí nếu không có speed
+                }
+            }
+            else -> y
+        }
+        
         return copy(
             currentTimeMs = newTime,
+            y = newY,
             alpha = when (type) {
                 EffectType.EXPLOSION -> 1f - progress
                 EffectType.MUZZLE_FLASH -> if (progress < 0.3f) 1f else 1f - ((progress - 0.3f) / 0.7f)
@@ -42,6 +62,8 @@ data class Effect(
                 EffectType.TRAIL -> 1f - progress
                 EffectType.SMOKE -> 1f - (progress * 0.5f)
                 EffectType.FIRE_ROW -> 1f // Giữ alpha ổn định cho hàng lửa
+                EffectType.WAVE -> 0.8f // Giữ alpha ổn định cho sóng
+                EffectType.FREEZE -> 0.7f // Giữ alpha ổn định cho đóng băng
             },
             scale = when (type) {
                 EffectType.EXPLOSION -> 1f + progress * 2f
@@ -50,6 +72,8 @@ data class Effect(
                 EffectType.TRAIL -> 1f - progress * 0.5f
                 EffectType.SMOKE -> 1f + progress * 1.5f
                 EffectType.FIRE_ROW -> 1f
+                EffectType.WAVE -> 1f + progress * 0.5f // Sóng mở rộng dần
+                EffectType.FREEZE -> 1f // Giữ scale ổn định cho đóng băng
             },
             rotation = rotation + (deltaTimeMs * 0.01f) // Quay chậm
         )
@@ -144,6 +168,47 @@ data class Effect(
                 damagePerSecond = dps
             )
         }
+
+        /**
+         * Tạo cơn sóng đẩy lùi địch dạng hàng ngang
+         * startY = vị trí Y bắt đầu (đáy sàn đấu)
+         * endY = vị trí Y kết thúc (đầu sàn đấu)
+         * width = chiều rộng của hàng (toàn bộ màn hình)
+         * height = chiều cao của hàng
+         */
+        fun createWave(startY: Float, endY: Float, durationMs: Long, width: Float , height: Float ): Effect {
+            return Effect(
+                type = EffectType.WAVE,
+                x = 0f, // Bắt đầu từ cạnh trái màn hình
+                y = startY, // Bắt đầu từ startY
+                startY = startY,
+                endY = endY,
+                durationMs = durationMs,
+                size = height, // Chiều cao của hàng
+                width = width, // Chiều rộng của hàng
+                color = 0xFF00BFFF.toInt(), // Màu xanh dương cho sóng nước
+                alpha = 0.8f,
+                damagePerSecond = 0f, // Không gây damage, chỉ đẩy lùi
+                speed = 1f // Có tốc độ di chuyển
+            )
+        }
+
+        /**
+         * Tạo hiệu ứng đóng băng cho enemy
+         * x, y = vị trí enemy
+         * durationMs = thời gian đóng băng
+         */
+        fun createFreeze(x: Float, y: Float, durationMs: Long = 3000L): Effect {
+            return Effect(
+                type = EffectType.FREEZE,
+                x = x,
+                y = y,
+                durationMs = durationMs,
+                size = 50f,
+                color = 0xFF87CEEB.toInt(), // Màu xanh băng
+                alpha = 0.7f
+            )
+        }
     }
 }
 
@@ -156,5 +221,7 @@ enum class EffectType(val displayName: String) {
     HIT_SPARK("Tia lửa va chạm"),
     TRAIL("Vệt đạn"),
     SMOKE("Khói"),
-    FIRE_ROW("Hàng lửa")
+    FIRE_ROW("Hàng lửa"),
+    WAVE("Cơn sóng"),
+    FREEZE("Đóng băng")
 }

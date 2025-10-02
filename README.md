@@ -5,9 +5,9 @@ Một game tower defense 2D được phát triển bằng Android Jetpack Compos
 ## 🎮 Tính năng chính
 
 ### Gameplay Core
-- **Hệ thống ngũ hành**: 5 hệ tướng (Kim, Mộc, Thủy, Hỏa, Thổ) với đặc điểm riêng biệt
+- **Hệ thống ngũ hành**: 5 hệ tướng (Kim, Mộc, Thủy, Hỏa, Băng) với đặc điểm riêng biệt
 - **Merge system**: Gộp 3 tướng cùng loại để nâng cấp sao (1★ → 2★ → 3★)
-- **Shop system**: Mua tướng ngẫu nhiên từ shop với 5 tiers (T1-T5) - luôn hoạt động
+- **Shop system**: Mua tướng ngẫu nhiên từ shop với giá cố định (1 gold) - luôn hoạt động
 - **Board management**: Quản lý 5 slot generic trên bàn cờ chiến đấu
 - **Infinite prep time**: Chuẩn bị vô hạn thời gian để sắp xếp tướng
 - **Fixed enemy waves**: Mỗi vòng có số lượng quái cố định (5 quái)
@@ -43,54 +43,6 @@ Một game tower defense 2D được phát triển bằng Android Jetpack Compos
 
 ## 🏗️ Kiến trúc dự án
 
-### Cấu trúc thư mục
-```
-app/src/main/java/com/baothanhbin/game2d/
-├── game/
-│   ├── GameViewModel.kt          # ViewModel chính quản lý UI state
-│   ├── logic/                    # Game logic systems
-│   │   ├── CombatSystem.kt       # Hệ thống chiến đấu real-time
-│   │   ├── EconomySystem.kt      # Hệ thống kinh tế (gold, XP, level)
-│   │   ├── EffectSystem.kt       # Hệ thống hiệu ứng visual
-│   │   ├── GameEngine.kt         # Engine game chính (60 FPS)
-│   │   ├── MergeSystem.kt        # Hệ thống merge tướng
-│   │   ├── ShopSystem.kt         # Hệ thống shop với probability
-│   │   ├── SoundSystem.kt        # Hệ thống âm thanh
-│   │   └── SpawnSystem.kt        # Hệ thống spawn enemy waves
-│   ├── model/                    # Data models
-│   │   ├── Bullet.kt            # Đạn với physics
-│   │   ├── Effect.kt             # Hiệu ứng visual
-│   │   ├── Enemy.kt             # Enemy với AI
-│   │   ├── Enums.kt             # Các enum (Star, Tier, Difficulty, etc.)
-│   │   ├── GameState.kt         # Trạng thái game toàn cục
-│   │   ├── HeroType.kt          # 5 hệ tướng ngũ hành
-│   │   ├── Player.kt            # Người chơi với bench/board
-│   │   ├── Shop.kt              # Shop với 5 slots
-│   │   └── Unit.kt              # Tướng với stats và abilities
-│   └── repo/
-│       └── GameDataStore.kt     # Repository với Room database
-├── ui/
-│   ├── home/                    # Màn hình game chính
-│   │   ├── components/          # UI components
-│   │   │   ├── BenchRow.kt      # Hàng bench (xanh lá)
-│   │   │   ├── BoardRow.kt      # Hàng board (tím) - 5 slots
-│   │   │   ├── BottomPanel.kt   # Panel dưới chứa tất cả
-│   │   │   ├── Dialogs.kt       # Các dialog (pause, game over)
-│   │   │   ├── DragDropComponents.kt # Drag & drop system
-│   │   │   ├── GameHUD.kt       # HUD game (lives, score, time)
-│   │   │   ├── PlayArea.kt      # Khu vực chiến đấu với background
-│   │   │   └── ShopRow.kt       # Hàng shop (xanh dương)
-│   │   └── HomeScreen.kt        # Màn hình chính orchestrate UI
-│   ├── navigation/
-│   │   └── GameNavigation.kt    # Navigation với Compose
-│   ├── splash/
-│   │   └── SplashScreen.kt      # Màn hình splash
-│   └── theme/                   # Material Design 3 theme
-│       ├── Color.kt            # Color palette
-│       ├── Theme.kt            # Theme configuration
-│       └── Type.kt             # Typography
-└── MainActivity.kt              # Activity chính với Compose
-```
 
 ### Công nghệ sử dụng
 - **Jetpack Compose**: UI framework hiện đại với Material Design 3
@@ -123,6 +75,11 @@ app/src/main/java/com/baothanhbin/game2d/
 - **Shop** (màu xanh dương): 5 ô mua tướng ngẫu nhiên với roll system
 - **HUD thông minh**: Hiển thị tiến độ diệt quái (2/5) thay vì countdown timer
 
+
+### Note cách chỉnh thong so
+- Chỉnh đốt Hp theo giây ở hệ hỏa: damageThisTick = 0.05f * e.maxHp * seconds
+- Tăng chiều cao cột lửa val fireThickness = 150f
+- Chỉnh tốc độ wave: durationMs = durationMs * 2L
 ### Hệ thống tướng
 #### 5 Hệ ngũ hành
 1. **Kim** (Vàng - #FFD700): Tướng kim loại, sức mạnh cao, damage physical

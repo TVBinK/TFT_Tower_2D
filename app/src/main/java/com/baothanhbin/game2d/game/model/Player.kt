@@ -33,8 +33,10 @@ data class Player(
          */
         private fun createStartingUnits(): List<Unit> {
             return listOf(
-                Unit.create(HeroType.KIM, Tier.T1),
-                Unit.create(HeroType.HOA, Tier.T1)
+                Unit.create(HeroType.METAL),
+                Unit.create(HeroType.FIRE),
+                Unit.create(HeroType.WATER),
+                Unit.create(HeroType.ICE)
             )
         }
         
