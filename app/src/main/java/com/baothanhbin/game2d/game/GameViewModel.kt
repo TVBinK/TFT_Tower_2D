@@ -5,7 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.baothanhbin.game2d.game.logic.GameEngine
 import com.baothanhbin.game2d.game.model.*
-import com.baothanhbin.game2d.game.repo.GameDataStore
+import com.baothanhbin.game2d.game.datastore.GameDataStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow

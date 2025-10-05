@@ -74,10 +74,7 @@ fun BenchRow(
                     },
                     onDragUpdate = remember(onDragUpdate) {
                         { offset ->
-                            android.util.Log.d("BenchRow", "📍 BENCH DRAG UPDATE: offset = $offset")
-                            android.util.Log.d("BenchRow", "📍 CALLING PARENT onDragUpdate with: $offset")
                             onDragUpdate(offset)
-                            android.util.Log.d("BenchRow", "📍 PARENT onDragUpdate CALLED")
                         }
                     },
                     modifier = Modifier
@@ -109,7 +106,7 @@ private fun UnitActionsRow(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1976D2).copy(alpha = 0.9f)
+            containerColor = Color.Transparent
         ),
         shape = RoundedCornerShape(8.dp)
     ) {

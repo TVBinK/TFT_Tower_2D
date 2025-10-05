@@ -32,18 +32,6 @@ object MusicManager {
             }
         } catch (_: Exception) { }
     }
-
-    fun playIfEnabled() {
-        val player = mediaPlayer ?: return
-        try {
-            if (enabled && !player.isPlaying) player.start()
-        } catch (_: Exception) { }
-    }
-
-    fun release() {
-        try { mediaPlayer?.release() } catch (_: Exception) { }
-        mediaPlayer = null
-    }
 }
 
 

@@ -30,6 +30,7 @@ fun GameHUD(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showExitConfirmation by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier,
@@ -135,7 +136,7 @@ fun GameHUD(
                     TextButton(
                         onClick = {
                             showMenu = false
-                            onBackToSplash()
+                            showExitConfirmation = true
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -146,6 +147,48 @@ fun GameHUD(
             confirmButton = {
                 TextButton(onClick = { showMenu = false }) {
                     Text("Close")
+                }
+            }
+        )
+    }
+    
+    // Exit confirmation dialog
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text("Cảnh báo")
+                }
+            },
+            text = {
+                Text("Bạn có chắc muốn quay về menu? Tiến trình game sẽ không được lưu.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitConfirmation = false
+                        onBackToSplash()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFFFF5722)
+                    )
+                ) {
+                    Text("Có")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text("Không")
                 }
             }
         )

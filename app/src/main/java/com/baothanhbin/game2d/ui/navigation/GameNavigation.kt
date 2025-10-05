@@ -15,7 +15,7 @@ import com.baothanhbin.game2d.ui.splash.SplashScreen
 import com.baothanhbin.game2d.ui.highscore.HighScoreScreen
 import com.baothanhbin.game2d.game.model.Season
 import com.baothanhbin.game2d.game.model.GameMode
-import com.baothanhbin.game2d.game.repo.GameDataStore
+import com.baothanhbin.game2d.game.datastore.GameDataStore
 import android.content.Context
 
 /**

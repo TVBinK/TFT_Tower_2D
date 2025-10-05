@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -56,6 +57,13 @@ fun ShopBottomBar(
     onClose: () -> Unit
 ) {
     if (!visible) return
+    
+    // Auto reroll when new day starts
+    LaunchedEffect(gameState.dayNumber) {
+        if (gameState.dayNumber > 1 && gameState.player.freeRerollsRemaining > 0) {
+            onReroll()
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()

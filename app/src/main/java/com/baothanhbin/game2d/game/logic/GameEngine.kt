@@ -1,7 +1,7 @@
 package com.baothanhbin.game2d.game.logic
 
 import com.baothanhbin.game2d.game.model.*
-import com.baothanhbin.game2d.game.repo.GameDataStore
+import com.baothanhbin.game2d.game.datastore.GameDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,15 +18,12 @@ class GameEngine(
     
     private val _gameState = MutableStateFlow(GameState())
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
-    
-    private val shopSystem = ShopSystem()
     private val economySystem = EconomySystem()
     private val mergeSystem = MergeSystem()
     private val combatSystem = CombatSystem()
     private val spawnSystem = SpawnSystem()
     private val effectSystem = EffectSystem()
-    private val soundSystem = SoundSystem()
-    
+
     /**
      * Khởi tạo game (không còn chế độ khó)
      */
@@ -185,10 +182,7 @@ class GameEngine(
         
         // Auto-merge after buying
         val mergedPlayer = mergeSystem.tryAutoMerge(newPlayer)
-        
-        // Phát âm thanh mua
-        soundSystem.playBuySound(unit)
-        
+
         _gameState.value = currentState.copy(
             player = mergedPlayer,
             shop = newShop

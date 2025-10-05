@@ -16,6 +16,8 @@ data class Unit(
     val cooldownRemainingMs: Long = 0L,
     val lastShotAtMs: Long = 0L,
     val lastWaveAtMs: Long = 0L, // Thời gian tạo wave cuối cùng
+    val lastFireSkillAtMs: Long = 0L, // Thời gian sử dụng Fire skill cuối cùng
+    val fireEffectEndAtMs: Long = 0L, // Thời điểm hàng lửa kết thúc lần gần nhất
     
     // Vị trí nếu đang trên board
     val boardPosition: BoardSlot? = null,
@@ -51,6 +53,12 @@ data class Unit(
         get() = !isFrozen
     
     /**
+     * Có thể sử dụng Fire skill? (cooldown 5 giây)
+     */
+    val canUseFireSkill: Boolean
+        get() = !isFrozen && System.currentTimeMillis() >= (fireEffectEndAtMs + FIRE_SKILL_GAP_AFTER_END_MS)
+    
+    /**
      * Giá bán lại (cố định cho tất cả hero)
      */
     val sellPrice: Int
@@ -58,6 +66,7 @@ data class Unit(
     
     companion object {
         private const val MIN_FIRE_RATE_MS: Long = 700L
+        private const val FIRE_SKILL_GAP_AFTER_END_MS: Long = 5000L
         private var idCounter = 0L
         
         // Cache HeroType.values() để tránh gọi lại nhiều lần
@@ -98,14 +107,6 @@ data class Unit(
                 HeroType.FIRE -> Pair(0f, 1600L)    // Very strong
                 HeroType.ICE -> Pair(10f, 2400L)     // Slower, freeze effect
             }
-        }
-        
-        /**
-         * Tạo random Unit
-         */
-        fun createRandom(): Unit {
-            val randomType = heroTypes.random()
-            return create(randomType)
         }
     }
     

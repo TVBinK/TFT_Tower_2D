@@ -148,7 +148,9 @@ fun DraggableBenchSlot(
 
     Card(
         modifier = modifier
-            .size(width = UiDimens.BENCH_SLOT_WIDTH, height = UiDimens.BENCH_SLOT_HEIGHT)
+            .size(
+                width = UiDimens.BENCH_SLOT_WIDTH, height = UiDimens.BENCH_SLOT_HEIGHT
+            )
             .onGloballyPositioned { coordinates ->
                 val newGlobalPosition = coordinates.positionInWindow()
                 globalPosition = newGlobalPosition
@@ -156,91 +158,74 @@ fun DraggableBenchSlot(
             }
             .pointerInput(unit?.id, canManage) {
                 if (unit != null && canManage) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            // Calculate center of bench slot (70dp x 90dp)
-                            val cardSizeInPx = with(density) {
-                                androidx.compose.ui.geometry.Size(
-                                    UiDimens.BENCH_SLOT_WIDTH.toPx(),
-                                    UiDimens.BENCH_SLOT_HEIGHT.toPx()
+                    detectDragGestures(onDragStart = { offset ->
+                        // Calculate center of bench slot (70dp x 90dp)
+                        val cardSizeInPx = with(density) {
+                            androidx.compose.ui.geometry.Size(
+                                UiDimens.BENCH_SLOT_WIDTH.toPx(), UiDimens.BENCH_SLOT_HEIGHT.toPx()
+                            )
+                        }
+
+                        // Use global position if available, otherwise calculate from offset
+                        val centerPosition =
+                            if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
+                                // Use global position and add center offset
+                                globalPosition + androidx.compose.ui.geometry.Offset(
+                                    cardSizeInPx.width / 2f, cardSizeInPx.height / 2f
                                 )
+                            } else {
+                                // Fallback: use the touch offset directly (less accurate)
+                                offset
                             }
 
-                            // Use global position if available, otherwise calculate from offset
-                            val centerPosition =
-                                if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
-                                    // Use global position and add center offset
-                                    globalPosition + androidx.compose.ui.geometry.Offset(
-                                        cardSizeInPx.width / 2f,
-                                        cardSizeInPx.height / 2f
-                                    )
-                                } else {
-                                    // Fallback: use the touch offset directly (less accurate)
-                                    offset
-                                }
+                        startDragPosition = centerPosition
+                        cumulativeOffset = androidx.compose.ui.geometry.Offset.Zero
 
-                            startDragPosition = centerPosition
-                            cumulativeOffset = androidx.compose.ui.geometry.Offset.Zero
-
-                            Log.d("DragBench", "Start position: $startDragPosition")
-                            onDragStart(unit, startDragPosition)
-                        },
-                        onDragEnd = {
-                            onDragEnd()
-                        },
-                        onDrag = { change, dragAmount ->
-                            // Update cumulative offset and current position
-                            cumulativeOffset += dragAmount
-                            val currentPosition = startDragPosition + cumulativeOffset
-                            onDragUpdate(currentPosition)
-                            change.consume() // Consume the gesture to prevent conflicts
-                        }
-                    )
+                        Log.d("DragBench", "Start position: $startDragPosition")
+                        onDragStart(unit, startDragPosition)
+                    }, onDragEnd = {
+                        onDragEnd()
+                    }, onDrag = { change, dragAmount ->
+                        // Update cumulative offset and current position
+                        cumulativeOffset += dragAmount
+                        val currentPosition = startDragPosition + cumulativeOffset
+                        onDragUpdate(currentPosition)
+                        change.consume() // Consume the gesture to prevent conflicts
+                    })
                 }
             }
             .then(
                 if (unit != null && canManage) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onSelect() }
-                } else {
-                    Modifier
-                }
-            )
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onSelect() }
+            } else {
+                Modifier
+            })
             .scale(if (isDragging) 1.1f else 1f)
             .alpha(if (isDragging) 0.8f else 1f)
-            .zIndex(if (isDragging) 10f else 1f),
-        colors = CardDefaults.cardColors(
-            containerColor = if (unit != null) {
-                if (isSelected) Color(0xFF2196F3) else Color(0xFF1E1E1E)
-            } else {
-                Color(0xFF424242)
-            }
-        ),
-        border = if (isSelected) {
-            androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF2196F3))
-        } else {
-            null
-        },
-        shape = RoundedCornerShape(8.dp)
-    ) {
+            .zIndex(if (isDragging) 10f else 1f), colors = CardDefaults.cardColors(
+        containerColor = if (unit != null) Color(unit.type.color).copy(0.4f) else Color.Transparent
+    ), border = if (isSelected) {
+        androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF2196F3))
+    } else {
+        null
+    }, shape = RoundedCornerShape(8.dp)) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
             if (unit != null) {
                 // Use UnitCard like Shop for consistent visuals
                 UnitCard(
-                    unit = unit,
-                    modifier = Modifier
+                    unit = unit, modifier = Modifier
                         .fillMaxSize()
                         .padding(2.dp)
                 )
             } else {
                 // Empty slot with add icon
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = androidx.compose.material.icons.Icons.Default.Add,
@@ -277,73 +262,63 @@ fun DraggableBoardSlot(
     var slotPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var slotSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
-    Card(
-        modifier = modifier
-            .onGloballyPositioned { coordinates ->
-                slotPosition = coordinates.positionInWindow()
-                slotSize = coordinates.size.toSize()
-                val rect = androidx.compose.ui.geometry.Rect(slotPosition, slotSize)
-                onPositionChanged(slotPosition, slotSize)
-            }
-            .pointerInput(unit, canManage) {
-                // Only setup drag gestures for units already on board
-                if (unit != null && canManage) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            Log.d("BoardSlot", "🔄 DRAG START: From board slot ${slot.name}")
-                        },
-                        onDragEnd = {
-                            Log.d("BoardSlot", "🔄 DRAG END: From board slot ${slot.name}")
-                        },
-                        onDrag = { change, _ ->
-                            // Handle dragging units from board
-                        }
-                    )
-                } else {
-                    // For empty slots or non-manageable units, only handle tap
-                    detectTapGestures(
-                        onTap = {
+    Card(modifier = modifier
+        .onGloballyPositioned { coordinates ->
+            slotPosition = coordinates.positionInWindow()
+            slotSize = coordinates.size.toSize()
+            val rect = androidx.compose.ui.geometry.Rect(slotPosition, slotSize)
+            onPositionChanged(slotPosition, slotSize)
+        }
+        .pointerInput(unit, canManage) {
+            // Only setup drag gestures for units already on board
+            if (unit != null && canManage) {
+                detectDragGestures(onDragStart = { offset ->
+                    Log.d("BoardSlot", "🔄 DRAG START: From board slot ${slot.name}")
+                }, onDragEnd = {
+                    Log.d("BoardSlot", "🔄 DRAG END: From board slot ${slot.name}")
+                }, onDrag = { change, _ ->
+                    // Handle dragging units from board
+                })
+            } else {
+                // For empty slots or non-manageable units, only handle tap
+                detectTapGestures(
+                    onTap = {
 
-                            // Check if this is a normal deploy operation
-                            if (selectedUnit != null && canManage && isActive && unit == null) {
-                                onDeploy(selectedUnit.id)
-                            }
-                            // Check if this is a recall operation
-                            else if (unit != null && canManage) {
-                                onRecall()
-                            }
-                        }
-                    )
-                }
-            }
-            .then(
-                when {
-                    unit != null && canManage -> {
-                        Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onRecall() }
-                    }
-
-                    selectedUnit != null && canManage && isActive && unit == null -> {
-                        Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
+                        // Check if this is a normal deploy operation
+                        if (selectedUnit != null && canManage && isActive && unit == null) {
                             onDeploy(selectedUnit.id)
                         }
-                    }
+                        // Check if this is a recall operation
+                        else if (unit != null && canManage) {
+                            onRecall()
+                        }
+                    })
+            }
+        }
+        .then(
+            when {
+            unit != null && canManage -> {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onRecall() }
+            }
 
-                    else -> Modifier
+            selectedUnit != null && canManage && isActive && unit == null -> {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    onDeploy(selectedUnit.id)
                 }
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        ),
+            }
+
+            else -> Modifier
+        }), colors = CardDefaults.cardColors(
+        containerColor = Color.Transparent
+    ),
         // No thick border to match Shop/Bench (UnitCard is clear enough)
-        border = null,
-        shape = RoundedCornerShape(8.dp)
-    ) {
+        border = null, shape = RoundedCornerShape(8.dp)) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -441,18 +416,15 @@ fun UnitCard(
     showBorder: Boolean = true
 ) {
     Box(
-        modifier = modifier
-            .size(32.dp)
-            .let { baseModifier ->
+        modifier = modifier.size(32.dp).let { baseModifier ->
                 val withBackground = if (showBorder) {
                     baseModifier.background(
-                        color = Color(unit.type.color).copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(6.dp)
+                        color = Color.Transparent, shape = RoundedCornerShape(6.dp)
                     )
                 } else {
                     baseModifier
                 }
-                
+
                 if (showBorder) {
                     withBackground.border(
                         width = 2.dp,
@@ -462,8 +434,7 @@ fun UnitCard(
                 } else {
                     withBackground
                 }
-            }
-    ) {
+            }) {
         // Animated image fills the entire card
         AnimatedUnitImage(
             unit = unit,
@@ -523,14 +494,13 @@ fun UnitCard(
 fun DraggableBenchSlotPreview() {
     DraggableBenchSlot(
         unit = com.baothanhbin.game2d.game.model.Unit.create(
-            type = HeroType.METAL
-        ),
+        type = HeroType.METAL
+    ),
         canManage = true,
         isSelected = false,
         isDragging = false,
         onSelect = {},
         onSell = {},
         onDragStart = { _, _ -> },
-        onDragEnd = {}
-    )
+        onDragEnd = {})
 }

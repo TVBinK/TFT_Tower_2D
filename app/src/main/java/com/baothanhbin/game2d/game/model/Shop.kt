@@ -33,13 +33,7 @@ data class Shop(
         // Cache HeroType.values() để tránh gọi lại nhiều lần
         private val heroTypes = HeroType.values()
     }
-    
-    /**
-     * Có slot trống không
-     */
-    val hasEmptySlot: Boolean
-        get() = slots.any { it.isEmpty }
-    
+
     /**
      * Có thể mua slot này không
      */

@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baothanhbin.game2d.R
 import com.baothanhbin.game2d.game.model.Season
-import com.baothanhbin.game2d.game.repo.GameDataStore
-import com.baothanhbin.game2d.game.repo.HighScoreEntry
+import com.baothanhbin.game2d.game.datastore.GameDataStore
+import com.baothanhbin.game2d.game.datastore.HighScoreEntry
 
 @Composable
 fun HighScoreScreen(

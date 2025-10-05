@@ -26,6 +26,8 @@ fun GameOverDialog(
     onRestart: () -> Unit,
     onBackToSplash: () -> Unit
 ) {
+    var showExitConfirmation by remember { mutableStateOf(false) }
+    
     Dialog(onDismissRequest = { }) {
         Card(
             modifier = Modifier
@@ -81,7 +83,7 @@ fun GameOverDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
-                        onClick = onBackToSplash,
+                        onClick = { showExitConfirmation = true },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.White
@@ -103,6 +105,49 @@ fun GameOverDialog(
             }
         }
     }
+    
+    // Exit confirmation dialog
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text("Warning")
+                }
+            },
+            text = {
+                Text("Are you sure you want to return to the menu?\n" +
+                        "Your game progress will not be saved.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitConfirmation = false
+                        onBackToSplash()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFFFF5722)
+                    )
+                ) {
+                    Text("Có")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text("Không")
+                }
+            }
+        )
+    }
 }
 
 // Victory dialog moved to GameWinDialog.kt
@@ -116,6 +161,8 @@ fun PauseOverlay(
     onRestart: () -> Unit,
     onBackToSplash: () -> Unit
 ) {
+    var showExitConfirmation by remember { mutableStateOf(false) }
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -144,7 +191,7 @@ fun PauseOverlay(
                 )
                 
                 Text(
-                    text = "TẠM NGHỈ",
+                    text = "PAUSED",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -193,7 +240,7 @@ fun PauseOverlay(
                     }
                     
                     OutlinedButton(
-                        onClick = onBackToSplash,
+                        onClick = { showExitConfirmation = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.White
@@ -213,5 +260,47 @@ fun PauseOverlay(
                 }
             }
         }
+    }
+    
+    // Exit confirmation dialog
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text("Warning")
+                }
+            },
+            text = {
+                Text("Are you sure you want to return to the menu? Your game progress will not be saved.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitConfirmation = false
+                        onBackToSplash()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFFFF5722)
+                    )
+                ) {
+                    Text("Có")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text("Không")
+                }
+            }
+        )
     }
 }

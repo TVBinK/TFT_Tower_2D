@@ -121,22 +121,7 @@ data class Effect(
                 color = color
             )
         }
-        
-        /**
-         * Tạo hiệu ứng vệt đạn
-         */
-        fun createTrail(x: Float, y: Float, color: Int = 0xFFFFFFFF.toInt()): Effect {
-            return Effect(
-                type = EffectType.TRAIL,
-                x = x,
-                y = y,
-                durationMs = 150L,
-                size = 8f,
-                color = color,
-                alpha = 0.6f
-            )
-        }
-        
+
         /**
          * Tạo hiệu ứng khói
          */
@@ -166,30 +151,6 @@ data class Effect(
                 color = 0xFFFF3D00.toInt(),
                 alpha = 1f,
                 damagePerSecond = dps
-            )
-        }
-
-        /**
-         * Tạo cơn sóng đẩy lùi địch dạng hàng ngang
-         * startY = vị trí Y bắt đầu (đáy sàn đấu)
-         * endY = vị trí Y kết thúc (đầu sàn đấu)
-         * width = chiều rộng của hàng (toàn bộ màn hình)
-         * height = chiều cao của hàng
-         */
-        fun createWave(startY: Float, endY: Float, durationMs: Long, width: Float , height: Float ): Effect {
-            return Effect(
-                type = EffectType.WAVE,
-                x = 0f, // Bắt đầu từ cạnh trái màn hình
-                y = startY, // Bắt đầu từ startY
-                startY = startY,
-                endY = endY,
-                durationMs = durationMs,
-                size = height, // Chiều cao của hàng
-                width = width, // Chiều rộng của hàng
-                color = 0xFF00BFFF.toInt(), // Màu xanh dương cho sóng nước
-                alpha = 0.8f,
-                damagePerSecond = 0f, // Không gây damage, chỉ đẩy lùi
-                speed = 1f // Có tốc độ di chuyển
             )
         }
 

@@ -160,34 +160,4 @@ class MergeSystem {
             Star.THREE -> Star.THREE // Không thể merge thêm
         }
     }
-    
-    /**
-     * Kiểm tra có thể merge units không
-     */
-    fun canMergeUnits(units: List<com.baothanhbin.game2d.game.model.Unit>): Boolean {
-        if (units.size < 3) return false
-        
-        val first = units.first()
-        return units.all { unit: com.baothanhbin.game2d.game.model.Unit -> 
-            unit.type == first.type && 
-            unit.star == first.star &&
-            unit.star != Star.THREE
-        }
-    }
-    
-    /**
-     * Tìm tất cả các group có thể merge
-     */
-    fun findMergeableGroups(player: Player): List<List<com.baothanhbin.game2d.game.model.Unit>> {
-        val allUnits = getAllUnitsFromPlayer(player)
-        
-        val groupedUnits = allUnits.groupBy { unit: com.baothanhbin.game2d.game.model.Unit -> 
-            Pair(unit.type, unit.star) 
-        }
-        
-        return groupedUnits.values.filter { units: List<com.baothanhbin.game2d.game.model.Unit> ->
-            units.size >= 3 && units.first().star != Star.THREE
-        }
-    }
-    
 }

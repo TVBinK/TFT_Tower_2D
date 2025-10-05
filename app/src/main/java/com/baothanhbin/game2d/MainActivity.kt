@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import com.baothanhbin.game2d.ui.navigation.GameNavigation
 import com.baothanhbin.game2d.ui.theme.Game2DTheme
 import com.baothanhbin.game2d.media.MusicManager
-import com.baothanhbin.game2d.game.repo.GameDataStore
+import com.baothanhbin.game2d.game.datastore.GameDataStore
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue

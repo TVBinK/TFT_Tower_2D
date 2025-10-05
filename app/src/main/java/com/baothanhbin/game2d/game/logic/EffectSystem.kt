@@ -103,33 +103,15 @@ class EffectSystem {
             effects = state.effects + muzzleFlash
         )
     }
-
-    /**
-     * Tạo hàng lửa tại toạ độ Y của unit
-     */
-    fun addFireRow(state: GameState, slot: BoardSlot, durationMs: Long, dps: Float, thickness: Float = 30f): GameState {
-        val (_, unitY) = getUnitPosition(slot)
-        // Đặt hàng lửa cao hơn so với bottom panel (dịch lên trên xa hơn)
-        val fireY = (unitY - 1000f).coerceAtLeast(0f)
-        val fire = Effect.createFireRow(y = fireY, durationMs = durationMs, dps = dps, thickness = thickness)
-        return state.copy(effects = state.effects + fire)
-    }
     
     /**
-     * Tạo cơn sóng dạng hàng ngang, chạy từ đáy lên đầu sàn đấu
+     * Tạo hàng lửa tại vị trí enemy gần nhất
      */
-    fun addWave(state: GameState, slot: BoardSlot, durationMs: Long, height: Float = 800f): GameState {
-        // Sóng bắt đầu từ đáy màn hình (Y cao) và chạy lên đầu (Y thấp)
-        val startY = GameState.SCREEN_HEIGHT - 100f // Đáy màn hình
-        val endY = 100f // Đầu màn hình
-        val wave = Effect.createWave(
-            startY = startY, 
-            endY = endY, 
-            durationMs = durationMs * 2L, // Tăng gấp đôi thời gian di chuyển để giảm tốc độ
-            width = GameState.SCREEN_WIDTH, // Toàn bộ chiều rộng màn hình
-            height = height
-        )
-        return state.copy(effects = state.effects + wave)
+    fun addFireRowAtEnemyPosition(state: GameState, enemy: Enemy, durationMs: Long, dps: Float, thickness: Float = 30f): GameState {
+        // Tạo hàng lửa tại vị trí Y của enemy
+        val fireY = enemy.y
+        val fire = Effect.createFireRow(y = fireY, durationMs = durationMs, dps = dps, thickness = thickness)
+        return state.copy(effects = state.effects + fire)
     }
     
     /**
@@ -144,21 +126,6 @@ class EffectSystem {
         
         return state.copy(
             effects = state.effects + hitSpark
-        )
-    }
-    
-    /**
-     * Thêm hiệu ứng vệt đạn
-     */
-    fun addBulletTrailEffect(state: GameState, bullet: Bullet): GameState {
-        val trail = Effect.createTrail(
-            x = bullet.x,
-            y = bullet.y,
-            color = bullet.heroType.color
-        )
-        
-        return state.copy(
-            effects = state.effects + trail
         )
     }
     

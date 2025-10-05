@@ -28,10 +28,5 @@ enum class BoardSlot(val position: Int) {
     SLOT_3(2),
     SLOT_4(3),
     SLOT_5(4);
-    
-    companion object {
-        fun fromPosition(position: Int): BoardSlot? {
-            return values().find { it.position == position }
-        }
-    }
+
 }

@@ -48,18 +48,6 @@ enum class ColorTheme(
      * Lấy danh sách tất cả các map có sẵn
      */
     companion object {
-        fun getAllMaps(): List<ColorTheme> = values().toList()
-        
-        /**
-         * Tìm theme theo tên map
-         */
-        fun getByMapName(mapName: String): ColorTheme? {
-            return values().find { it.mapName.equals(mapName, ignoreCase = true) }
-        }
-        
-        /**
-         * Lấy theme mặc định
-         */
         fun getDefault(): ColorTheme = WINTER
     }
 }

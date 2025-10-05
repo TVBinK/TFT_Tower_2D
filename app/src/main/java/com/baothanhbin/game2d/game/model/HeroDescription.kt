@@ -13,7 +13,7 @@ enum class HeroDescription(
     FIRE(
         heroType = HeroType.FIRE,
         displayName = "Fire",
-        star1Description = "★☆☆ Creates a blazing fire line that deals high damage and lasts 5 seconds.",
+        star1Description = "★☆☆ Creates a blazing fire line at nearest enemy that deals high damage and lasts 5 seconds. (5s cooldown)",
         star2Description = "★★☆ Duration increases to 7 seconds.",
         star3Description = "★★★ Duration increases to 9 seconds and deals splash damage."
     ),
