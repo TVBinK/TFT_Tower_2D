@@ -4,14 +4,30 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
-import com.baothanhbin.game2d.game.model.Difficulty
+ 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+/**
+ * High Score Entry
+ */
+@Serializable
+data class HighScoreEntry(
+    val score: Long,
+    val day: Int,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 /**
  * DataStore để lưu trữ dữ liệu game
  */
 class GameDataStore(private val context: Context) {
+    
+    private val json = Json { ignoreUnknownKeys = true }
     
     companion object {
         private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "game_prefs")
@@ -22,19 +38,59 @@ class GameDataStore(private val context: Context) {
         private val SOUND_ON = booleanPreferencesKey("sound_on")
         private val VIBRATE_ON = booleanPreferencesKey("vibrate_on")
         private val TOTAL_GAMES_PLAYED = intPreferencesKey("total_games_played")
-        private val HIGHEST_WAVE = intPreferencesKey("highest_wave")
+        private val HIGHEST_DAY = intPreferencesKey("highest_day")
         private val TOTAL_GOLD_EARNED = longPreferencesKey("total_gold_earned")
         private val TOTAL_ENEMIES_KILLED = longPreferencesKey("total_enemies_killed")
+        
+        // Top 6 scores keys
+        private val TOP_6_SCORES = stringPreferencesKey("top_6_scores")
+        private val TOP_6_DAYS = stringPreferencesKey("top_6_days")
     }
     
     /**
-     * Lưu best score
+     * Lưu best score và top 6 scores
      */
-    suspend fun saveBestScore(score: Long) {
+    suspend fun saveBestScore(score: Long, day: Int) {
         context.dataStore.edit { preferences ->
             val currentBest = preferences[BEST_SCORE] ?: 0L
             if (score > currentBest) {
                 preferences[BEST_SCORE] = score
+            }
+            
+            // Cập nhật top 6 scores
+            val currentScoresJson = preferences[TOP_6_SCORES] ?: "[]"
+            val currentDaysJson = preferences[TOP_6_DAYS] ?: "[]"
+            
+            try {
+                val currentScores = json.decodeFromString<List<Long>>(currentScoresJson)
+                val currentDays = json.decodeFromString<List<Int>>(currentDaysJson)
+                
+                val newEntry = HighScoreEntry(score, day)
+                val entries = mutableListOf<HighScoreEntry>()
+                
+                // Thêm entries hiện tại
+                currentScores.forEachIndexed { index, score ->
+                    if (index < currentDays.size) {
+                        entries.add(HighScoreEntry(score, currentDays[index]))
+                    }
+                }
+                
+                // Thêm entry mới
+                entries.add(newEntry)
+                
+                // Sắp xếp theo score giảm dần và lấy top 6
+                val top6 = entries.sortedByDescending { it.score }.take(6)
+                
+                val top6Scores = top6.map { it.score }
+                val top6Days = top6.map { it.day }
+                
+                preferences[TOP_6_SCORES] = json.encodeToString(top6Scores)
+                preferences[TOP_6_DAYS] = json.encodeToString(top6Days)
+                
+            } catch (e: Exception) {
+                // Nếu có lỗi parse, tạo mới
+                preferences[TOP_6_SCORES] = json.encodeToString(listOf(score))
+                preferences[TOP_6_DAYS] = json.encodeToString(listOf(day))
             }
         }
     }
@@ -47,25 +103,31 @@ class GameDataStore(private val context: Context) {
     }
     
     /**
-     * Lưu difficulty cuối cùng
+     * Lấy top 6 high scores
      */
-    suspend fun saveLastDifficulty(difficulty: Difficulty) {
-        context.dataStore.edit { preferences ->
-            preferences[LAST_DIFFICULTY] = difficulty.name
+    val top6Scores: Flow<List<HighScoreEntry>> = context.dataStore.data.map { preferences ->
+        val scoresJson = preferences[TOP_6_SCORES] ?: "[]"
+        val daysJson = preferences[TOP_6_DAYS] ?: "[]"
+        
+        try {
+            val scores = json.decodeFromString<List<Long>>(scoresJson)
+            val days = json.decodeFromString<List<Int>>(daysJson)
+            
+            val entries = mutableListOf<HighScoreEntry>()
+            scores.forEachIndexed { index, score ->
+                if (index < days.size) {
+                    entries.add(HighScoreEntry(score, days[index]))
+                }
+            }
+            entries.sortedByDescending { it.score }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
     
-    /**
-     * Lấy difficulty cuối cùng
-     */
-    val lastDifficulty: Flow<Difficulty> = context.dataStore.data.map { preferences ->
-        val difficultyName = preferences[LAST_DIFFICULTY] ?: Difficulty.NORMAL.name
-        try {
-            Difficulty.valueOf(difficultyName)
-        } catch (e: Exception) {
-            Difficulty.NORMAL
-        }
-    }
+    // Không còn lưu difficulty
+    
+    // Không còn đọc difficulty
     
     /**
      * Settings âm thanh
@@ -97,7 +159,7 @@ class GameDataStore(private val context: Context) {
      * Lưu thống kê game
      */
     suspend fun saveGameStats(
-        wave: Int,
+        day: Int,
         goldEarned: Long,
         enemiesKilled: Long
     ) {
@@ -106,10 +168,10 @@ class GameDataStore(private val context: Context) {
             val currentGames = preferences[TOTAL_GAMES_PLAYED] ?: 0
             preferences[TOTAL_GAMES_PLAYED] = currentGames + 1
             
-            // Cập nhật highest wave
-            val currentHighestWave = preferences[HIGHEST_WAVE] ?: 0
-            if (wave > currentHighestWave) {
-                preferences[HIGHEST_WAVE] = wave
+            // Cập nhật highest day
+            val currentHighestDay = preferences[HIGHEST_DAY] ?: 0
+            if (day > currentHighestDay) {
+                preferences[HIGHEST_DAY] = day
             }
             
             // Cộng dồn thống kê
@@ -127,7 +189,7 @@ class GameDataStore(private val context: Context) {
     data class GameStats(
         val totalGamesPlayed: Int,
         val bestScore: Long,
-        val highestWave: Int,
+        val highestDay: Int,
         val totalGoldEarned: Long,
         val totalEnemiesKilled: Long
     )
@@ -136,7 +198,7 @@ class GameDataStore(private val context: Context) {
         GameStats(
             totalGamesPlayed = preferences[TOTAL_GAMES_PLAYED] ?: 0,
             bestScore = preferences[BEST_SCORE] ?: 0L,
-            highestWave = preferences[HIGHEST_WAVE] ?: 0,
+            highestDay = preferences[HIGHEST_DAY] ?: 0,
             totalGoldEarned = preferences[TOTAL_GOLD_EARNED] ?: 0L,
             totalEnemiesKilled = preferences[TOTAL_ENEMIES_KILLED] ?: 0L
         )

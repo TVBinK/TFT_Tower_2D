@@ -6,9 +6,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.baothanhbin.game2d.game.model.ColorTheme
+import com.baothanhbin.game2d.game.model.GameMode
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.baothanhbin.game2d.game.GameViewModel
-import com.baothanhbin.game2d.game.model.Difficulty
+import com.baothanhbin.game2d.game.model.Season
 import com.baothanhbin.game2d.ui.home.components.*
 
 /**
@@ -16,18 +17,27 @@ import com.baothanhbin.game2d.ui.home.components.*
  */
 @Composable
 fun HomeScreen(
-    difficulty: Difficulty,
+    season: Season,
     onBackToSplash: () -> kotlin.Unit,
-    viewModel: GameViewModel = viewModel()
+    viewModel: GameViewModel = viewModel(),
+    mode: GameMode = GameMode.CAMPAIGN
 ) {
     val gameState by viewModel.gameState.collectAsState()
+    
+    // Map season to ColorTheme
+    val colorTheme = when (season) {
+        Season.SPRING -> ColorTheme.SPRING
+        Season.SUMMER -> ColorTheme.SUMMER
+        Season.AUTUMN -> ColorTheme.AUTUMN
+        Season.WINTER -> ColorTheme.WINTER
+    }
     
     // Use gameState directly to ensure UI updates properly
     
     // Auto-start game khi vào màn hình
-    LaunchedEffect(difficulty) {
+    LaunchedEffect(mode) {
         try {
-            viewModel.startGame(difficulty)
+            viewModel.startGame(mode)
         } catch (e: Exception) {
             android.util.Log.e("HomeScreen", "Error starting game: ${e.message}", e)
         }
@@ -55,6 +65,7 @@ fun HomeScreen(
             // Play Area - khu vực game chính
             PlayArea(
                 gameState = gameState,
+                season = season,
                 onForceCombat = viewModel::forceCombatPhase,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -64,6 +75,7 @@ fun HomeScreen(
             // Bottom Panel - Shop, Bench, Board
             BottomPanel(
                 gameState = gameState,
+                season = season,
                 onBuyUnit = viewModel::buyUnit,
                 onSellUnit = viewModel::sellUnit,
                 onRerollShop = viewModel::rerollShop,
@@ -73,7 +85,7 @@ fun HomeScreen(
                 onSwapUnit = viewModel::swapUnit,
                 onStartCombat = viewModel::startCombat,
                 onOpenShop = { showShopOverlay = true },
-                colorTheme = ColorTheme.WINTER, // TODO: Sẽ được thay đổi động dựa trên map được chọn
+                colorTheme = colorTheme,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -82,9 +94,18 @@ fun HomeScreen(
         if (gameState.isGameOver) {
             GameOverDialog(
                 score = gameState.player.score,
-                wave = gameState.player.wave,
+                day = gameState.player.day,
                 onRestart = viewModel::restartGame,
                 onBackToSplash = onBackToSplash
+            )
+        }
+        // Victory Dialog (Campaign win)
+        if (gameState.isVictory) {
+            VictoryDialog(
+                score = gameState.player.score,
+                day = gameState.player.day,
+                onBackToSplash = onBackToSplash,
+                onPlayAgain = viewModel::restartGame
             )
         }
         

@@ -1,6 +1,5 @@
 package com.baothanhbin.game2d.ui.home.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import com.baothanhbin.game2d.game.model.ColorTheme
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -21,38 +19,19 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalDensity
 import android.util.Log
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import com.baothanhbin.game2d.R
 import com.baothanhbin.game2d.game.model.BoardSlot
 import com.baothanhbin.game2d.game.model.GameState
+import com.baothanhbin.game2d.game.model.Season
 
-@Composable
-private fun CollapseHeader(
-    title: String,
-    collapsed: Boolean,
-    onToggle: () -> Unit,
-    onDrag: (dy: Float) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .pointerInput(collapsed) {
-                detectVerticalDragGestures { _, dragAmount ->
-                    onDrag(dragAmount)
-                }
-            }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = title, color = Color.White)
-        TextButton(onClick = onToggle) {
-            Text(if (collapsed) "Show" else "Hide", color = Color.White)
-        }
-    }
-}
 
 @Composable
 fun BottomPanel(
     gameState: GameState,
+    season: Season,
     onBuyUnit: (Int) -> Unit,
     onSellUnit: (String) -> Unit,
     onRerollShop: () -> Unit,
@@ -76,13 +55,8 @@ fun BottomPanel(
         dragOffset = offset
         Log.d("BottomPanel", "📍 DIRECT DRAG UPDATE: dragOffset updated to $dragOffset")
     }
-    
-    // Debug: Log dragOffset changes
-    LaunchedEffect(dragOffset, isDragging) {
-        Log.d("BottomPanel", "🔄 BOTTOM PANEL STATE: isDragging=$isDragging, dragOffset=$dragOffset")
-    }
+
     var benchCollapsed by remember { mutableStateOf(false) }
-    var shopCollapsed by remember { mutableStateOf(false) }
     var bottomPanelPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
     Box(
@@ -92,17 +66,24 @@ fun BottomPanel(
                 Log.d("BottomPanel", "BottomPanel position: $bottomPanelPosition")
             }
     ) {
+        // Background image based on season
+        val backgroundResId = when (season) {
+            Season.SPRING -> R.drawable.bg_bottom_spring
+            Season.SUMMER -> R.drawable.bg_bottom_summer
+            Season.AUTUMN -> R.drawable.bg_bottom_autumn
+            Season.WINTER -> R.drawable.bg_bottom_winter
+        }
+        
+        Image(
+            painter = painterResource(id = backgroundResId),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.FillBounds
+        )
+        
         Column(
             modifier = Modifier
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            colorTheme.bottomPanelGradientStart,
-                            colorTheme.bottomPanelGradientEnd
-                        )
-                    )
-                )
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(PaddingValues(start = 8.dp, end = 8.dp, top = 10.dp, bottom = 16.dp)),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
         // Board row - Đội hình ở trên cùng
@@ -111,6 +92,7 @@ fun BottomPanel(
             canManageUnits = gameState.canManageUnits(),
             selectedUnit = selectedUnit,
             draggingUnit = draggingUnit,
+            season = season,
             isDragging = isDragging,
             dragOffset = dragOffset,
             onRecallUnit = onRecallUnit,
@@ -182,31 +164,52 @@ fun BottomPanel(
         // Action buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
                 onClick = onOpenShop,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF607D8B)),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
-            ) { Text("Shop") }
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_shop),
+                    contentDescription = "Toggle",
+                    modifier = Modifier.size(37.dp)
+                )
+            }
 
             Button(
-                onClick = onBuyXP,
-                enabled = gameState.canBuyXP(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8BC34A)),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
-            ) { Text("Buy XP") }
+                onClick = { 
+                    if (gameState.player.canBuyXP) {
+                        onBuyXP()
+                    }
+                },
+                enabled = gameState.player.canBuyXP,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent
+                )
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_buyxp),
+                    contentDescription = "Buy XP",
+                    modifier = Modifier
+                        .size(45.dp)
+                        .alpha(if (gameState.player.canBuyXP) 1f else 0.3f)
+                )
+            }
 
             if (gameState.isInPrep) {
                 Button(
                     onClick = onStartCombat,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722)),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                    modifier = Modifier.weight(1f)
-                ) { Text("Fight") }
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_fight),
+                        contentDescription = "Toggle",
+                        modifier = Modifier.size(37.dp)
+                    )
+                }
             }
         }
         }
@@ -255,11 +258,45 @@ fun BottomPanel(
         }
     }
 }
+@Composable
+private fun CollapseHeader(
+    title: String,
+    collapsed: Boolean,
+    onToggle: () -> Unit,
+    onDrag: (dy: Float) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(collapsed) {
+                detectVerticalDragGestures { _, dragAmount ->
+                    onDrag(dragAmount)
+                }
+            }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = title, color = Color.White)
+        Button(
+            onClick = onToggle,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_show),
+                contentDescription = "Toggle",
+                modifier = Modifier.size(23.dp)
+            )
+        }
+    }
+}
+
 @Preview
 @Composable
 fun BottomPanelPreview() {
     BottomPanel(
         gameState = GameState.sample(),
+        season = Season.WINTER,
         onBuyUnit = { index -> },
         onSellUnit = { unitId -> },
         onRerollShop = { },

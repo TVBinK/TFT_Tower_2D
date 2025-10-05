@@ -32,11 +32,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * Bắt đầu game với difficulty
+     * Bắt đầu game
      */
-    fun startGame(difficulty: Difficulty) {
+    fun startGame(mode: GameMode = GameMode.CAMPAIGN) {
+        android.util.Log.d("GameViewModel", "🎮 Starting game")
         stopGameLoop()
-        gameEngine.initGame(difficulty)
+        gameEngine.initGame(mode) // Khởi tạo game state theo chế độ
         startGameLoop()
     }
     
@@ -44,8 +45,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Bắt đầu game loop
      */
     private fun startGameLoop() {
+        android.util.Log.d("GameViewModel", "🔄 Starting game loop")
         gameLoopJob = viewModelScope.launch {
             var lastFrameTime = System.currentTimeMillis()
+            var frameCount = 0
             
             while (isActive) {
                 try {
@@ -57,6 +60,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     
                     // Game tick
                     gameEngine.tick(clampedDeltaTime)
+                    
+                    // Log every 60 frames (1 second at 60fps)
+                    frameCount++
+                    if (frameCount % 60 == 0) {
+                        android.util.Log.d("GameViewModel", "🔄 Game loop running... frame $frameCount")
+                    }
                     
                     lastFrameTime = currentTime
                     

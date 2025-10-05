@@ -28,13 +28,10 @@ class GameEngine(
     private val soundSystem = SoundSystem()
     
     /**
-     * Khởi tạo game với difficulty
+     * Khởi tạo game (không còn chế độ khó)
      */
-    fun initGame(difficulty: Difficulty) {
-        val newState = GameState()
-            .withDifficulty(difficulty)
-            .startGame()
-        
+    fun initGame(mode: GameMode = GameMode.CAMPAIGN) {
+        val newState = GameState(gameMode = mode).startGame()
         _gameState.value = newState
     }
     
@@ -65,9 +62,9 @@ class GameEngine(
                 RoundPhase.COMBAT -> handleCombatPhase(newState, deltaTimeMs)
             }
             
-            // Check round completion
-            if (newState.isRoundComplete) {
-                newState = newState.completeRound()
+            // Check day completion
+            if (newState.isDayComplete) {
+                newState = newState.completeDay()
             }
             
             // Luôn update cooldowns của units trên board
@@ -77,6 +74,12 @@ class GameEngine(
             if (newState.shouldEndGame) {
                 saveGameOverData(newState)
                 newState = newState.endGame()
+            }
+
+            // Campaign win condition: defeat all 3 bosses
+            if (!newState.isGameOver && !newState.isVictory && newState.shouldWinGame) {
+                saveGameOverData(newState)
+                newState = newState.winGame()
             }
             
             _gameState.value = newState
@@ -137,13 +140,24 @@ class GameEngine(
         // Check if enemies reached bottom
         newState = combatSystem.checkEnemiesReachedBottom(newState)
 
-        // Mộc: hồi 1 HP mỗi 7s nếu có ít nhất một tướng Mộc trên board
-        val hasFLOWER = newState.player.board.values.any { it?.type == com.baothanhbin.game2d.game.model.HeroType.FLOWER }
-        if (hasFLOWER) {
+        // Mộc: hồi HP theo sao nếu có ít nhất một tướng Mộc trên board
+        val flowerUnits = newState.player.board.values.filter { it?.type == com.baothanhbin.game2d.game.model.HeroType.FLOWER }
+        if (flowerUnits.isNotEmpty()) {
+            // Lấy tướng Mộc có sao cao nhất để xác định hiệu ứng
+            val highestStarFlower = flowerUnits.maxByOrNull { it?.star ?: Star.ONE }!!
+            
+            val (healAmount, healInterval) = when (highestStarFlower.star) {
+                Star.ONE -> Pair(2, 10000L)   // ★☆☆ +2 HP mỗi 10s
+                Star.TWO -> Pair(3, 10000L)   // ★★☆ +3 HP mỗi 10s  
+                Star.THREE -> Pair(5, 8000L)  // ★★★ +5 HP mỗi 8s
+            }
+            
             val accum = newState.mocRegenAccumMs + deltaTimeMs
-            if (accum >= 7000L) {
-                val healedPlayer = newState.player.copy(lives = (newState.player.lives + 1).coerceAtMost(100))
-                newState = newState.copy(player = healedPlayer, mocRegenAccumMs = accum - 7000L)
+            if (accum >= healInterval) {
+                val healedPlayer = newState.player.copy(lives = (newState.player.lives + healAmount).coerceAtMost(100))
+                newState = newState.copy(player = healedPlayer, mocRegenAccumMs = accum - healInterval)
+                
+                println("🌸 FLOWER HEAL: +${healAmount} HP (${highestStarFlower.star} star)")
             } else {
                 newState = newState.copy(mocRegenAccumMs = accum)
             }
@@ -194,9 +208,6 @@ class GameEngine(
         val newPlayer = currentState.player
             .removeFromBench(unitId)
             .copy(gold = currentState.player.gold + unit.sellPrice)
-        
-        // Phát âm thanh bán
-        soundSystem.playSellSound(unit)
         
         _gameState.value = currentState.copy(player = newPlayer)
     }
@@ -292,8 +303,7 @@ class GameEngine(
      * Restart game
      */
     fun restartGame() {
-        val difficulty = _gameState.value.difficulty
-        initGame(difficulty)
+        initGame()
     }
     
     /**
@@ -301,8 +311,14 @@ class GameEngine(
      */
     fun startCombat() {
         val currentState = _gameState.value
+        android.util.Log.d("GameEngine", "🎯 START COMBAT: Current phase=${currentState.roundPhase}, isInPrep=${currentState.isInPrep}")
+        
         if (currentState.isInPrep) {
-            _gameState.value = currentState.startCombat()
+            val newState = currentState.startCombat()
+            android.util.Log.d("GameEngine", "🎯 COMBAT STARTED: New phase=${newState.roundPhase}, lastSpawnTimeMs=${newState.lastSpawnTimeMs}, remainingEnemies=${newState.remainingEnemiesToSpawn}")
+            _gameState.value = newState
+        } else {
+            android.util.Log.d("GameEngine", "🎯 CANNOT START COMBAT: Not in prep phase")
         }
     }
     
@@ -327,10 +343,9 @@ class GameEngine(
     private fun saveGameOverData(state: GameState) {
         gameDataStore?.let { dataStore ->
             coroutineScope?.launch {
-                dataStore.saveBestScore(state.player.score)
-                dataStore.saveLastDifficulty(state.difficulty)
+                dataStore.saveBestScore(state.player.score, state.player.day)
                 dataStore.saveGameStats(
-                    wave = state.player.wave,
+                    day = state.player.day,
                     goldEarned = state.player.gold.toLong(),
                     enemiesKilled = 0L // TODO: track enemies killed
                 )

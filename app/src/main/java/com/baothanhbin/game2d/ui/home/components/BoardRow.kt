@@ -16,6 +16,7 @@ fun BoardRow(
     canManageUnits: Boolean,
     selectedUnit: com.baothanhbin.game2d.game.model.Unit?,
     draggingUnit: com.baothanhbin.game2d.game.model.Unit?,
+    season: Season,
     isDragging: Boolean = false,
     dragOffset: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero,
     onRecallUnit: (BoardSlot) -> kotlin.Unit,
@@ -93,6 +94,7 @@ fun BoardRow(
                     canManage = canManageUnits,
                     isDragTarget = isDragging && draggingUnit != null && slot.position < player.deployCap && player.board[slot] == null && hoveredSlot == slot,
                     selectedUnit = if (isDragging) draggingUnit else selectedUnit,
+                    season = season,
                     onRecall = { onRecallUnit(slot) },
                     onDeploy = { unitId -> 
                         onDeployUnit(unitId, slot)
@@ -119,15 +121,13 @@ private fun BoardRowPreview() {
         Player(
             gold = 50,
             level = 3,
-            maxMana = 100f,
             bench = listOf(),
             board = mapOf(
                 BoardSlot.SLOT_1 to Unit(
                     id = "u2",
                     type = HeroType.METAL,
                     baseDamage = 20f,
-                    baseFireRateMs = 1000L,
-                    manaCost = 15f
+                    baseFireRateMs = 1000L
                 ),
                 BoardSlot.SLOT_2 to null,
                 BoardSlot.SLOT_3 to null,
@@ -143,10 +143,10 @@ private fun BoardRowPreview() {
             id = "u2",
             type = HeroType.METAL,
             baseDamage = 20f,
-            baseFireRateMs = 1000L,
-            manaCost = 15f
+            baseFireRateMs = 1000L
         ),
         draggingUnit = null,
+        season = Season.SPRING,
         onRecallUnit = {},
         onDeployUnit = { _, _ -> },
         modifier = Modifier

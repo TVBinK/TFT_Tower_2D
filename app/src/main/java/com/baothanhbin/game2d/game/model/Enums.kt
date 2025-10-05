@@ -10,20 +10,6 @@ enum class Star(val value: Int, val symbol: String) {
 }
 
 
-/**
- * Độ khó game
- */
-enum class Difficulty(
-    val displayName: String,
-    val hpMultiplier: Float,
-    val speedMultiplier: Float,
-    val spawnDelayMultiplier: Float,
-    val rewardMultiplier: Float
-) {
-    EASY("Dễ", 0.8f, 0.9f, 1.2f, 1.0f),
-    NORMAL("Thường", 1.0f, 1.0f, 1.0f, 1.0f),
-    HARD("Khó", 1.3f, 1.1f, 0.8f, 1.2f)
-}
 
 /**
  * Pha game (Chuẩn bị hoặc Chiến đấu)

@@ -15,13 +15,18 @@ data class Enemy(
     val size: Float = 80f,
     val reward: Int = 1,
     val enemyType: EnemyType = EnemyType.BASIC,
-    val sprite: EnemySprite = EnemySprite.BASIC_1,
+    val archetype: EnemyArchetype = EnemyArchetype.BASIC,
     // Trạng thái đóng băng và làm chậm
     val isFrozen: Boolean = false,
     val freezeEndTime: Long = 0L,
     val isSlowed: Boolean = false,
     val slowEndTime: Long = 0L,
-    val slowMultiplier: Float = 1f
+    val slowMultiplier: Float = 1f,
+    // Boss fields
+    val isBoss: Boolean = false,
+    val bossAbility: BossAbility? = null,
+    val abilityCooldownMs: Long = 4000L,
+    val lastAbilityAtMs: Long = 0L
 ) {
     
     /**
@@ -46,10 +51,8 @@ data class Enemy(
      * Nhận damage
      */
     fun takeDamage(damage: Float): Enemy {
-        // Giới hạn sát thương mỗi hit để không chết ngay lập tức
-        val maxDamagePerHit = (maxHp * 0.4f).coerceAtLeast(1f)
-        val appliedDamage = kotlin.math.min(damage, maxDamagePerHit)
-        val newHp = (currentHp - appliedDamage).coerceAtLeast(0f)
+        // Không giới hạn damage - heroes bắn full damage
+        val newHp = (currentHp - damage).coerceAtLeast(0f)
         return copy(currentHp = newHp)
     }
     
@@ -126,19 +129,42 @@ data class Enemy(
         fun create(
             x: Float,
             y: Float,
-            wave: Int,
-            difficulty: Difficulty
+            day: Int,
+            archetype: EnemyArchetype = EnemyArchetype.BASIC,
+            isBoss: Boolean = false,
+            bossAbility: BossAbility? = null
         ): Enemy {
-            val baseHp = 5f + wave * 1f  // Giảm HP từ 10+2*wave xuống 5+1*wave
-            val baseSpeed = 50f + wave * 1f
-            val baseReward = 1 + wave / 5
+            val baseHp = 30f + day * 8f  // Base HP tăng dần theo ngày
+            val baseSpeed = 50f + day * 1f // Base speed tăng nhẹ theo ngày
+            val baseReward = 1 + day / 5 // Base reward tăng theo ngày
+            val hpMul: Float
+            val speedMul: Float
+            val sizeMul: Float
+            val rewardMul: Float
+            when (archetype) {
+                EnemyArchetype.BASIC -> {
+                    hpMul = 1.0f; speedMul = 1.0f; sizeMul = 1.0f; rewardMul = 1.0f
+                }
+                EnemyArchetype.TANK -> {
+                    hpMul = 3.0f; speedMul = 0.6f; sizeMul = 1.2f; rewardMul = 2.0f
+                }
+                EnemyArchetype.FAST -> {
+                    hpMul = 0.6f; speedMul = 1.8f; sizeMul = 0.9f; rewardMul = 1.0f
+                }
+            }
             
+            val rewardFloat = baseReward.toFloat() * rewardMul
             return Enemy(
                 x = x,
                 y = y,
-                maxHp = baseHp * difficulty.hpMultiplier,
-                speed = baseSpeed * difficulty.speedMultiplier,
-                reward = (baseReward * difficulty.rewardMultiplier).toInt()
+                maxHp = baseHp * hpMul,
+                speed = baseSpeed * speedMul,
+                size = 80f * sizeMul,
+                reward = rewardFloat.toInt(),
+                archetype = archetype,
+                isBoss = isBoss,
+                bossAbility = bossAbility,
+                lastAbilityAtMs = if (isBoss) System.currentTimeMillis() else 0L
             )
         }
     }
@@ -151,13 +177,30 @@ enum class EnemyType(val displayName: String, val color: Int) {
     BASIC("Cơ bản", 0xFFFF0000.toInt()),
     FAST("Nhanh", 0xFFFFFF00.toInt()),
     TANK("Bọc thép", 0xFF800080.toInt()),
-    ROBE("Robe", 0xFF00BCD4.toInt())
+    MURID("Murid", 0xFF00FFFF.toInt()),
+    BOSS1("Boss 1", 0xFFFF6B35.toInt()),
+    BOSS2("Boss 2", 0xFF00FF00.toInt()),
+    BOSS3("Boss 3", 0xFF0000FF.toInt())
 }
 
 /**
- * Sprite lựa chọn cho enemy khi hiển thị
+ * Phân loại gameplay của quái (để map theo yêu cầu: basic/tank/fast)
  */
-enum class EnemySprite {
-    BASIC_1,
-    BASIC_2,
+enum class EnemyArchetype {
+    BASIC,        // monter_basic
+    TANK,         // monter_big_hp_slow_walk
+    FAST          // monter_paper_hp_fast_walk
+}
+
+// Đã loại bỏ EnemySprite; hiển thị dựa trên archetype
+
+/**
+ * Loại kỹ năng của Boss
+ */
+enum class BossAbility {
+    SUMMON_MINIONS,   // Gọi thêm đệ tử
+    SUMMON_MURID,     // Boss2: Gọi murid với tốc độ nhanh
+    SHOOT_BULLETS,    // Bắn đạn (tạm thời chưa gây sát thương lên tướng)
+    FREEZE_RANDOM_UNIT, // Đóng băng 1 tướng bất kỳ bên mình
+    FREEZE_HEROES     // Boss3: Đóng băng tướng để không cho tung skill
 }

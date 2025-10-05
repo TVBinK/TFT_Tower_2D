@@ -22,7 +22,7 @@ import androidx.compose.ui.window.Dialog
 @Composable
 fun GameOverDialog(
     score: Long,
-    wave: Int,
+    day: Int,
     onRestart: () -> Unit,
     onBackToSplash: () -> Unit
 ) {
@@ -69,7 +69,7 @@ fun GameOverDialog(
                     )
                     
                     Text(
-                        text = "Đạt được Wave: $wave",
+                        text = "Đạt được Day: $day",
                         fontSize = 16.sp,
                         color = Color.White.copy(alpha = 0.8f)
                     )
@@ -104,6 +104,8 @@ fun GameOverDialog(
         }
     }
 }
+
+// Victory dialog moved to GameWinDialog.kt
 
 /**
  * Pause Overlay

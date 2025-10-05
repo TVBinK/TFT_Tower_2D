@@ -30,7 +30,7 @@ fun GameHUD(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    
+
     Surface(
         modifier = modifier,
         color = Color(0xFF1A1A1A).copy(alpha = 0.9f),
@@ -39,14 +39,14 @@ fun GameHUD(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left side - Gold, Score, Wave, Lives
+            // Left side - Gold, Score, Lives (wrap content, do not compress)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 HUDItem(
                     icon = Icons.Default.AttachMoney,
@@ -54,40 +54,50 @@ fun GameHUD(
                     value = gameState.player.gold.toString(),
                     color = Color(0xFFFFD700)
                 )
-                
+
                 HUDItem(
                     icon = Icons.Default.Star,
                     label = "Score",
                     value = gameState.player.score.toString(),
                     color = Color(0xFFFFA726)
                 )
-                
-                HUDItem(
-                    icon = Icons.Default.Favorite,
-                    label = "Wave",
-                    value = gameState.player.wave.toString(),
-                    color = Color(0xFF00BCD4)
-                )
-                
+
                 HUDItem(
                     icon = Icons.Default.Favorite,
                     label = "Lives",
                     value = gameState.player.lives.toString(),
-                    color = if (gameState.player.lives <= 20) Color(0xFFFF5722) else Color(0xFF4CAF50)
+                    color = if (gameState.player.lives <= 20) Color(0xFFFF5722) else Color(
+                        0xFF4CAF50
+                    )
+                )
+
+                // XP Progress
+                HUDItem(
+                    icon = Icons.Default.TrendingUp,
+                    label = "Level",
+                    value = "${gameState.player.xp}/${gameState.player.xpNeededForNextLevel}",
+                    color = Color(0xFF9C27B0)
                 )
             }
-            
-            // Center - Round info
-            RoundInfo(
-                phase = gameState.roundPhase,
-                roundNumber = gameState.roundNumber,
-                enemiesKilled = gameState.enemiesKilled,
-                totalEnemies = gameState.totalEnemiesPerRound
-            )
-            
+
+            // Center - Round info (flex area)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                RoundInfo(
+                    phase = gameState.roundPhase,
+                    dayNumber = gameState.dayNumber,
+                    enemiesKilled = gameState.enemiesKilled,
+                    totalEnemies = gameState.totalEnemiesPerDay
+                )
+            }
+
             // Right side - Controls
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Pause button
@@ -101,22 +111,10 @@ fun GameHUD(
                         tint = Color.White
                     )
                 }
-                
-                // Menu button
-                IconButton(
-                    onClick = { showMenu = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
-                        tint = Color.White
-                    )
-                }
             }
         }
     }
-    
+
     // Menu dropdown
     if (showMenu) {
         AlertDialog(
@@ -133,7 +131,7 @@ fun GameHUD(
                     ) {
                         Text("Restart Game")
                     }
-                    
+
                     TextButton(
                         onClick = {
                             showMenu = false
@@ -171,7 +169,7 @@ private fun HUDItem(
             tint = color,
             modifier = Modifier.size(16.dp)
         )
-        
+
         Column {
             Text(
                 text = value,
@@ -191,7 +189,7 @@ private fun HUDItem(
 @Composable
 private fun RoundInfo(
     phase: RoundPhase,
-    roundNumber: Int,
+    dayNumber: Int,
     enemiesKilled: Int,
     totalEnemies: Int
 ) {
@@ -199,58 +197,48 @@ private fun RoundInfo(
         RoundPhase.PREP -> Color(0xFF4CAF50)
         RoundPhase.COMBAT -> Color(0xFFFF5722)
     }
-    
+
     val phaseText = when (phase) {
         RoundPhase.PREP -> "CHUẨN BỊ"
         RoundPhase.COMBAT -> "CHIẾN ĐẤU"
     }
-    
+
     Card(
         modifier = Modifier
             .background(
                 color = phaseColor.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(8.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            ),
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent
         )
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(6.dp)
         ) {
             Text(
-                text = "Round $roundNumber",
+                text = "Day $dayNumber",
                 fontSize = 10.sp,
                 color = Color.White.copy(alpha = 0.8f)
             )
-            
+
             Text(
                 text = phaseText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = phaseColor
             )
-            
-            if (phase == RoundPhase.COMBAT) {
-                Text(
-                    text = "$enemiesKilled/$totalEnemies",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            } else {
-                Text(
-                    text = "Vô hạn",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF4CAF50)
-                )
-            }
+
+            Text(
+                text = "$enemiesKilled/$totalEnemies",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun GameHUDPreview() {
@@ -259,13 +247,15 @@ fun GameHUDPreview() {
             player = com.baothanhbin.game2d.game.model.Player(
                 gold = 150,
                 score = 1200,
-                wave = 5,
-                lives = 18
+                day = 5,
+                lives = 18,
+                xp = 5,
+                level = 3
             ),
             roundPhase = RoundPhase.COMBAT,
-            roundNumber = 5,
+            dayNumber = 5,
             enemiesKilled = 12,
-            totalEnemiesPerRound = 20,
+            totalEnemiesPerDay = 20,
             isPaused = false
         ),
         onPauseToggle = {},

@@ -18,7 +18,7 @@ class CombatSystem {
      */
     fun updateUnitCooldowns(state: GameState, deltaTimeMs: Long): GameState {
         val updatedBoard = state.player.board.mapValues { (_, unit) ->
-            unit?.let { updateUnitCooldown(it, deltaTimeMs) }
+            unit?.let { updateUnitCooldown(it.updateStatus(), deltaTimeMs) }
         }
         
         return state.copy(
@@ -36,47 +36,53 @@ class CombatSystem {
     
     /**
      * Units bắn đạn vào enemies
-     * Cập nhật: Tướng cần mana để bắn, không tự động bắn
      */
     fun unitsShoot(state: GameState): GameState {
-        // Cập nhật mana trước
-        val updatedPlayer = state.player.updateMana(System.currentTimeMillis())
-        val activeUnits = getActiveUnits(updatedPlayer)
+        val activeUnits = getActiveUnits(state.player)
         val enemies = state.enemies.filter { it.isAlive }
         
         // Debug: Log shooting info
         val unitsOnBoard = state.player.board.values.count { it != null }
-        android.util.Log.d("CombatSystem", "🔫 SHOOTING: unitsOnBoard=$unitsOnBoard, enemies=${enemies.size}, mana=${updatedPlayer.currentMana}")
+        android.util.Log.d("CombatSystem", "🔫 SHOOTING: unitsOnBoard=$unitsOnBoard, enemies=${enemies.size}")
         
         // Giới hạn số lượng đạn tối đa để tránh spam, hạ ngưỡng ngay đầu trận
         val bulletCap = 30
         if (state.bullets.size > bulletCap) {
             println("TOO MANY BULLETS! Current: ${state.bullets.size}, skipping bullet creation")
-            return state.copy(player = updatedPlayer)
+            return state
         }
         
         val newBullets = mutableListOf<Bullet>()
-        val updatedBoard = updatedPlayer.board.toMutableMap()
-        var currentPlayer = updatedPlayer
+        val updatedBoard = state.player.board.toMutableMap()
         var updatedState = state
         
         for ((slot, unit) in state.player.board) {
-            if (unit == null || unit.cooldownRemainingMs > 0) continue
-            // Không chặn sớm theo mana để tránh ảnh hưởng slot khác; hệ cần mana sẽ tự kiểm tra bên trong
-            
-            // Kiểm tra có đủ mana để bắn không (đã check trước)
+            if (unit == null || unit.cooldownRemainingMs > 0 || !unit.canAct) {
+                if (unit != null && unit.isFrozen) {
+                    println("COMBAT DEBUG: 🧊 Unit ${unit.type} at slot ${slot.position} is FROZEN, skipping action")
+                }
+                continue
+            }
             
             // Tìm enemy gần nhất trong tầm bắn
             val target = findNearestEnemyInRange(unit, enemies, slot)
             
             if (target != null) {
-                // Hệ Hỏa: tạo hàng lửa thay vì bắn đạn
+                // Hệ Hỏa: tạo hàng lửa với thời gian theo sao
                 if (unit.type == HeroType.FIRE) {
-                    val fireDuration = 20000L // lâu hơn
+                    val fireDuration = when (unit.star) {
+                        Star.ONE -> 5000L   // ★☆☆ 5 giây
+                        Star.TWO -> 7000L   // ★★☆ 7 giây  
+                        Star.THREE -> 9000L // ★★★ 9 giây
+                    }
                     val fireDps = unit.actualDamage * 2f
-                    // Tăng chiều cao cột lửa
                     val fireThickness = 150f
+                    
+                    // ★★★ có splash damage (sẽ implement sau trong EffectSystem)
+                    val hasSplashDamage = unit.star == Star.THREE
+                    
                     updatedState = effectSystem.addFireRow(updatedState, slot, fireDuration, fireDps, thickness = fireThickness)
+                    
                     val updatedUnit = unit.copy(
                         cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
                         lastShotAtMs = System.currentTimeMillis()
@@ -93,11 +99,23 @@ class CombatSystem {
                     android.util.Log.d("THUY_WAVE", "🌊 THUY Wave Check: timeSinceLastWave=${timeSinceLastWave}ms, waveCooldownMs=${waveCooldownMs}ms, canCreateWave=${timeSinceLastWave >= waveCooldownMs}")
                     
                     if (timeSinceLastWave >= waveCooldownMs) {
-                        val waveDuration = 3000L // 3 giây (giảm từ 8 giây)
-                        val waveHeight = 200f // Chiều cao sóng giảm (từ 400f)
-                        updatedState = effectSystem.addWave(updatedState, slot, waveDuration, waveHeight)
+                        val waveDuration = 3000L // 3 giây
+                        val waveHeight = 200f // Chiều cao sóng
                         
-                        android.util.Log.d("THUY_WAVE", "🌊 THUY Wave CREATED! Height=${waveHeight}")
+                        // Tạo số sóng theo sao
+                        val waveCount = when (unit.star) {
+                            Star.ONE -> 1   // ★☆☆ 1 sóng
+                            Star.TWO -> 2   // ★★☆ 2 sóng
+                            Star.THREE -> 3 // ★★★ 3 sóng
+                        }
+                        
+                        // Tạo nhiều sóng (sẽ implement delay sau trong EffectSystem)
+                        repeat(waveCount) { index ->
+                            // Tạm thời tạo sóng liên tiếp, delay sẽ được implement trong EffectSystem
+                            updatedState = effectSystem.addWave(updatedState, slot, waveDuration, waveHeight)
+                        }
+                        
+                        android.util.Log.d("THUY_WAVE", "🌊 THUY Wave CREATED! Count=${waveCount}, Height=${waveHeight}")
                         
                         // Cập nhật lastWaveAtMs khi tạo wave
                         val updatedUnit = unit.copy(
@@ -120,6 +138,8 @@ class CombatSystem {
                 }
                 // Hệ Mộc: không bắn – chỉ hồi máu (xử lý trong GameEngine)
                 else if (unit.type == HeroType.FLOWER) {
+                    // FLOWER không bắn đạn, chỉ hồi HP theo sao
+                    // Logic hồi HP được xử lý trong GameEngine với thời gian khác nhau theo sao
                     val updatedUnit = unit.copy(
                         cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
                         lastShotAtMs = System.currentTimeMillis()
@@ -127,37 +147,47 @@ class CombatSystem {
                     updatedBoard[slot] = updatedUnit
                     continue
                 }
-                // Hệ Băng: bắn đạn băng
+                // Hệ Băng: bắn đạn băng với hiệu ứng theo sao
                 else if (unit.type == HeroType.ICE) {
-                    // Bỏ yêu cầu mana: mọi unit đều có thể dùng skill/bắn
                     
                     // Tạo bullet băng từ vị trí tướng
                     val (baseX, baseY) = getUnitPosition(slot)
                     val bulletX = baseX
                     val bulletY = baseY
                     
-                    // Giảm số viên bắn mỗi lượt một chút để tổng lượng đạn ít hơn
-                    val bulletsPerShot = 1 // Cố định 1 viên cho ICE
-                    // Spread góc nhẹ để fan ra, tâm vẫn hướng về target
+                    // Tăng damage theo sao
+                    val iceDamage = when (unit.star) {
+                        Star.ONE -> unit.actualDamage * 1.0f    // ★☆☆ damage cơ bản
+                        Star.TWO -> unit.actualDamage * 1.5f    // ★★☆ +50% damage
+                        Star.THREE -> unit.actualDamage * 2.0f  // ★★★ +100% damage
+                    }
+                    
+                    // Tăng freeze chance theo sao
+                    val freezeChance = when (unit.star) {
+                        Star.ONE -> 0.3f   // ★☆☆ 30% chance
+                        Star.TWO -> 0.5f   // ★★☆ 50% chance
+                        Star.THREE -> 0.7f // ★★★ 70% chance
+                    }
+                    
+                    // Tạo bullet với damage và freeze chance đã điều chỉnh
+                    val iceUnit = unit.copy(baseDamage = iceDamage)
+                    val bulletsPerShot = 1
                     val baseAngle = kotlin.math.atan2((target.y - bulletY), (target.x - bulletX))
-                    val totalSpread = 0.30f // ~17 độ tổng
+                    val totalSpread = 0.30f
                     val step = if (bulletsPerShot > 1) totalSpread / (bulletsPerShot - 1) else 0f
                     val startAngle = baseAngle - totalSpread / 2f
 
                     repeat(bulletsPerShot) { index ->
                         val angle = startAngle + index * step
-                        val range = 60f // giữ nguyên tầm bắn
+                        val range = 60f
                         val tx = bulletX + kotlin.math.cos(angle) * range
                         val ty = bulletY + kotlin.math.sin(angle) * range
-                        val b = Bullet.create(unit, bulletX, bulletY, target.copy(x = tx, y = ty))
+                        val b = Bullet.create(iceUnit, bulletX, bulletY, target.copy(x = tx, y = ty))
                         newBullets.add(b)
                     }
                     
                     // Thêm hiệu ứng lửa nòng súng
                     updatedState = effectSystem.addMuzzleFlashEffect(updatedState, unit, slot)
-                    
-                    // Phát âm thanh bắn
-                    soundSystem.playShootSound(unit)
                     
                     val updatedUnit = unit.copy(
                         cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
@@ -166,40 +196,52 @@ class CombatSystem {
                     updatedBoard[slot] = updatedUnit
                     continue
                 }
-                // Bỏ yêu cầu mana cho các hệ còn lại
                 
-                // Tạo bullet thẳng từ vị trí tướng
+                // Tạo bullet thẳng từ vị trí tướng (METAL và các hệ khác)
                 val (baseX, baseY) = getUnitPosition(slot)
                 val bulletX = baseX
                 val bulletY = baseY
                 
-                // Giảm số viên bắn mỗi lượt một chút để tổng lượng đạn ít hơn
-                val bulletsPerShot = 1 // Cố định 1 viên cho các hệ khác
-                // Spread góc nhẹ để fan ra, tâm vẫn hướng về target
+                // Tăng damage và speed theo sao cho METAL
+                val (enhancedDamage, enhancedSpeed) = if (unit.type == HeroType.METAL) {
+                    when (unit.star) {
+                        Star.ONE -> Pair(unit.actualDamage * 1.0f, unit.actualFireRateMs * 1.0f)    // ★☆☆ cơ bản
+                        Star.TWO -> Pair(unit.actualDamage * 1.3f, unit.actualFireRateMs * 0.8f)   // ★★☆ +30% damage, +25% speed
+                        Star.THREE -> Pair(unit.actualDamage * 1.6f, unit.actualFireRateMs * 0.6f) // ★★★ +60% damage, +67% speed
+                    }
+                } else {
+                    Pair(unit.actualDamage, unit.actualFireRateMs.toFloat())
+                }
+                
+                // Tạo unit với stats đã tăng cường
+                val enhancedUnit = unit.copy(
+                    baseDamage = enhancedDamage,
+                    baseFireRateMs = enhancedSpeed.toLong()
+                )
+                
+                val bulletsPerShot = 1
                 val baseAngle = kotlin.math.atan2((target.y - bulletY), (target.x - bulletX))
-                val totalSpread = 0.30f // ~17 độ tổng
+                val totalSpread = 0.30f
                 val step = if (bulletsPerShot > 1) totalSpread / (bulletsPerShot - 1) else 0f
                 val startAngle = baseAngle - totalSpread / 2f
 
                 repeat(bulletsPerShot) { index ->
                     val angle = startAngle + index * step
-                    val range = 60f // giữ nguyên tầm bắn
+                    val range = 60f
                     val tx = bulletX + kotlin.math.cos(angle) * range
                     val ty = bulletY + kotlin.math.sin(angle) * range
-                    val b = Bullet.create(unit, bulletX, bulletY, target.copy(x = tx, y = ty))
+                    val b = Bullet.create(enhancedUnit, bulletX, bulletY, target.copy(x = tx, y = ty))
                     newBullets.add(b)
                 }
                 
-                // Debug: Log bullet creation với thông tin mana
+                // Debug: Log bullet creation
                 val targetColumn = ((target.x / (GameState.SCREEN_WIDTH / 5f)).toInt()).coerceIn(0, 4)
                 val unitColumn = slot.position
-                println("BULLET CREATED! Unit at column $unitColumn targeting Enemy at column $targetColumn - Mana used: ${unit.manaCost}, Remaining: ${currentPlayer.currentMana}")
+                println("BULLET CREATED! Unit at column $unitColumn targeting Enemy at column $targetColumn")
                 
                 // Thêm hiệu ứng lửa nòng súng
                 updatedState = effectSystem.addMuzzleFlashEffect(updatedState, unit, slot)
-                
-                // Phát âm thanh bắn
-                soundSystem.playShootSound(unit)
+
                 
                 // Reset cooldown và đánh dấu thời điểm bắn
                 val updatedUnit = unit.copy(
@@ -212,7 +254,7 @@ class CombatSystem {
         
         return updatedState.copy(
             bullets = state.bullets + newBullets,
-            player = currentPlayer.copy(board = updatedBoard)
+            player = state.player.copy(board = updatedBoard)
         )
     }
     
@@ -351,10 +393,101 @@ class CombatSystem {
         val updatedEnemies = state.enemies.map { enemy ->
             // Cập nhật trạng thái đóng băng và làm chậm trước khi di chuyển
             val statusUpdatedEnemy = enemy.updateStatus()
-            statusUpdatedEnemy.moveDown(deltaTimeSeconds)
+            val moved = statusUpdatedEnemy.moveDown(deltaTimeSeconds)
+            moved
         }
         
-        return state.copy(enemies = updatedEnemies)
+        var newState = state.copy(enemies = updatedEnemies)
+        // Xử lý kỹ năng boss (đơn giản, theo cooldown)
+        val now = System.currentTimeMillis()
+        val bosses = newState.enemies.filter { it.isBoss && it.isAlive }
+        bosses.forEach { boss ->
+            val timeSinceLastAbility = now - boss.lastAbilityAtMs
+            val canUseAbility = timeSinceLastAbility >= boss.abilityCooldownMs
+            
+            if (boss.enemyType == EnemyType.BOSS3) {
+                println("BOSS3 DEBUG: 🧊 Cooldown check - timeSinceLastAbility: ${timeSinceLastAbility}ms, abilityCooldownMs: ${boss.abilityCooldownMs}ms, canUseAbility: $canUseAbility")
+            }
+            
+            if (canUseAbility) {
+                when (boss.bossAbility) {
+                    BossAbility.SUMMON_MINIONS -> {
+                        val colWidth = GameState.SCREEN_WIDTH / 5f
+                        val summonX = boss.x
+                        val minions = listOf(-1, 0, 1).map { dx ->
+                            val x = (summonX + dx * (colWidth / 3f)).coerceIn(0f, GameState.SCREEN_WIDTH)
+                            Enemy.create(x, boss.y - 60f,  newState.player.day, archetype = EnemyArchetype.FAST).copy(
+                                enemyType = EnemyType.FAST
+                            )
+                        }
+                        newState = newState.copy(enemies = newState.enemies + minions)
+                    }
+                    BossAbility.FREEZE_RANDOM_UNIT -> {
+                        val candidates = newState.player.board.values.mapNotNull { it }
+                        if (candidates.isNotEmpty()) {
+                            val target = candidates.random()
+                            val frozen = target.freeze(2000L)
+                            val updatedBoard = newState.player.board.mapValues { (slot, unit) ->
+                                if (unit?.id == target.id) frozen else unit
+                            }
+                            newState = newState.copy(player = newState.player.copy(board = updatedBoard))
+                        }
+                    }
+                    BossAbility.SUMMON_MURID -> {
+                        // Boss2: Summon 2 murid thay vì 3
+                        val colWidth = GameState.SCREEN_WIDTH / 5f
+                        val summonX = boss.x
+                        val murids = listOf(-1, 1).map { dx -> // Giảm từ 3 xuống 2 murid
+                            val x = (summonX + dx * (colWidth / 3f)).coerceIn(0f, GameState.SCREEN_WIDTH)
+                            Enemy.create(x, boss.y - 60f, newState.player.day, archetype = EnemyArchetype.FAST).copy(
+                                enemyType = EnemyType.MURID,
+                                speed = 80f // Murid nhanh hơn enemy thường
+                            )
+                        }
+                        newState = newState.copy(enemies = newState.enemies + murids)
+                    }
+                    BossAbility.FREEZE_HEROES -> {
+                        // Boss3: Đóng băng random 2 tướng bất kỳ
+                        println("BOSS3 DEBUG: 🧊 Boss3 using FREEZE_HEROES ability!")
+                        var tempState = newState
+                        
+                        // Lấy danh sách tướng có sẵn trên board
+                        val availableUnits = newState.player.board.values.mapNotNull { it }
+                        if (availableUnits.isNotEmpty()) {
+                            // Chọn random 2 tướng (hoặc ít hơn nếu không đủ)
+                            val unitsToFreeze = availableUnits.shuffled().take(2)
+                            println("BOSS3 DEBUG: 🧊 Freezing ${unitsToFreeze.size} random units")
+                            
+                            val updatedBoard = newState.player.board.mapValues { (slot, unit) ->
+                                if (unit != null && unitsToFreeze.contains(unit)) {
+                                    println("BOSS3 DEBUG: 🧊 Freezing unit ${unit.type} at slot ${slot.position}")
+                                    // Thêm hiệu ứng freeze cho tướng được chọn
+                                    val (unitX, unitY) = getUnitPosition(slot)
+                                    val freezeEffect = Effect.createFreeze(unitX, unitY, 8000L) // Đóng băng 8 giây
+                                    tempState = effectSystem.addEffect(tempState, freezeEffect)
+                                    val frozenUnit = unit.freeze(8000L) // Đóng băng 8 giây
+                                    println("BOSS3 DEBUG: 🧊 Unit ${frozenUnit.type} frozen: ${frozenUnit.isFrozen}, freezeEndTime: ${frozenUnit.freezeEndTime}")
+                                    frozenUnit
+                                } else {
+                                    unit
+                                }
+                            }
+                            newState = tempState.copy(player = tempState.player.copy(board = updatedBoard))
+                        }
+                        println("BOSS3 DEBUG: 🧊 FREEZE_HEROES completed!")
+                    }
+                    BossAbility.SHOOT_BULLETS -> {
+                        // Tạm thời chỉ thêm hiệu ứng nhỏ; bắn đạn thật sẽ cần hệ va chạm mới
+                        newState = newState // no-op placeholder
+                    }
+                    else -> {}
+                }
+                // cập nhật thời gian dùng skill cho boss này
+                val updatedBoss = boss.copy(lastAbilityAtMs = now)
+                newState = newState.copy(enemies = newState.enemies.map { if (it.id == boss.id) updatedBoss else it })
+            }
+        }
+        return newState
     }
     
     /**
@@ -405,9 +538,7 @@ class CombatSystem {
                     
                     // Thêm hiệu ứng va chạm
                     updatedState = effectSystem.addHitEffect(updatedState, bullet, currentEnemy)
-                    
-                    // Phát âm thanh va chạm
-                    soundSystem.playHitSound(bullet, currentEnemy)
+
                     
                     // Nếu enemy chết, cộng reward và thêm hiệu ứng nổ
                     if (currentEnemy.isDead) {
@@ -417,6 +548,12 @@ class CombatSystem {
                         soundSystem.playEnemyDeathSound(currentEnemy)
                         // Cập nhật số enemy bị tiêu diệt
                         updatedState = updatedState.killEnemy(currentEnemy.id)
+                        
+                        // Track defeated bosses
+                        if (currentEnemy.isBoss) {
+                            updatedState = updatedState.addDefeatedBoss(currentEnemy.enemyType)
+                            println("🏆 BOSS DEFEATED: ${currentEnemy.enemyType}, Total bosses: ${updatedState.defeatedBosses.size}")
+                        }
                     }
                     
                     break // Một bullet chỉ va chạm một enemy
@@ -478,27 +615,75 @@ class CombatSystem {
     }
     
     /**
-     * Kiểm tra enemies có chạm đáy màn hình không
+     * Kiểm tra enemies có chạm mép dưới PlayArea (đầu board) không
+     * Nếu chạm: enemy chết ngay và trừ lives của player
      */
     fun checkEnemiesReachedBottom(state: GameState): GameState {
-        val bottomY = GameState.SCREEN_HEIGHT + 50f
-        val (enemiesReachedBottom, remainingEnemies) = state.enemies.partition { 
-            it.y >= bottomY 
-        }
-        
-        if (enemiesReachedBottom.isEmpty()) {
+        // Đường chết trùng mép trên của BottomPanel: SCREEN_HEIGHT - DEATH_LINE_OFFSET
+        val deathLineY = GameState.SCREEN_HEIGHT - GameState.DEATH_LINE_OFFSET
+        // So sánh theo mép dưới của sprite enemy: bottom = y + size (vì vẽ cao = size*2)
+        val (enemiesAtBottom, remainingEnemies) = state.enemies.partition { (it.y + it.size) >= deathLineY }
+
+        if (enemiesAtBottom.isEmpty()) {
             return state.copy(enemies = remainingEnemies)
         }
+
+        var updatedState = state
+        enemiesAtBottom.forEach { enemy ->
+            updatedState = effectSystem.addEnemyDeathEffect(updatedState, enemy)
+            soundSystem.playEnemyDeathSound(enemy)
+            updatedState = updatedState.killEnemy(enemy.id)
+        }
+
+        // Kiểm tra boss chạm đáy - nếu có boss thì game over ngay
+        val bossesAtBottom = enemiesAtBottom.filter { it.isBoss }
+        if (bossesAtBottom.isNotEmpty()) {
+            // Boss chạm đáy = game over ngay lập tức
+            val gameOverPlayer = updatedState.player.copy(lives = 0)
+            updatedState = updatedState.copy(player = gameOverPlayer)
+            
+            println("💀 GAME OVER! Boss reached bottom!")
+            bossesAtBottom.forEach { boss ->
+                println("   - Boss ${boss.enemyType} reached bottom - INSTANT DEFEAT!")
+            }
+        } else {
+            // Trừ lives của player dựa trên HP còn lại của enemies thường chạm đáy (có cân đối)
+            val normalEnemiesAtBottom = enemiesAtBottom.filter { !it.isBoss }
+            val damageToPlayer = normalEnemiesAtBottom.sumOf { enemy -> 
+                // Tính damage dựa trên HP còn lại, nhưng có giới hạn để cân đối
+                val remainingHp = enemy.currentHp.coerceAtLeast(1f)
+                
+                // Chuyển đổi HP enemy thành damage player với tỷ lệ cân đối
+                // Công thức: sqrt(HP) * 2 để giảm damage khi HP cao
+                val rawDamage = kotlin.math.sqrt(remainingHp) * 2f
+                
+                // Giới hạn damage tối đa mỗi enemy là 10 HP
+                kotlin.math.ceil(rawDamage).toInt().coerceIn(1, 10)
+            }
+            val newLives = (updatedState.player.lives - damageToPlayer).coerceAtLeast(0)
+            val updatedPlayer = updatedState.player.copy(lives = newLives)
+            updatedState = updatedState.copy(player = updatedPlayer)
+        }
         
-        // Trừ lives
-        val livesLost = enemiesReachedBottom.size
-        val updatedPlayer = state.player.copy(
-            lives = (state.player.lives - livesLost).coerceAtLeast(0)
-        )
-        
-        return state.copy(
-            enemies = remainingEnemies,
-            player = updatedPlayer
+        // Debug log để theo dõi damage (chỉ cho enemies thường)
+        val normalEnemiesAtBottom = enemiesAtBottom.filter { !it.isBoss }
+        if (normalEnemiesAtBottom.isNotEmpty()) {
+            val damageToPlayer = normalEnemiesAtBottom.sumOf { enemy -> 
+                val remainingHp = enemy.currentHp.coerceAtLeast(1f)
+                val rawDamage = kotlin.math.sqrt(remainingHp) * 2f
+                kotlin.math.ceil(rawDamage).toInt().coerceIn(1, 10)
+            }
+            println("🔥 ENEMY REACHED BOTTOM! ${normalEnemiesAtBottom.size} normal enemies, total damage: $damageToPlayer HP")
+            normalEnemiesAtBottom.forEach { enemy ->
+                val remainingHp = enemy.currentHp.coerceAtLeast(1f)
+                val rawDamage = kotlin.math.sqrt(remainingHp) * 2f
+                val finalDamage = kotlin.math.ceil(rawDamage).toInt().coerceIn(1, 10)
+                println("   - Enemy HP: ${enemy.currentHp}/${enemy.maxHp}, damage dealt: $finalDamage")
+            }
+        }
+
+        return updatedState.copy(
+            enemies = remainingEnemies
         )
     }
 }

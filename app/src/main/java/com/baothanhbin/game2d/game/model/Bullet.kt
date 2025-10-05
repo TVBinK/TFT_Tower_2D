@@ -65,7 +65,7 @@ data class Bullet(
             return Bullet(
                 x = startX,
                 y = startY,
-                damage = unit.actualDamage,
+                damage = unit.baseDamage, // Sử dụng baseDamage thay vì actualDamage để tránh double multiplier
                 speed = unit.bulletSpeed,
                 size = bulletSize,
                 heroType = unit.type,

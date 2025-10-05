@@ -21,6 +21,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Movie
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Khu vực chơi game - hiển thị enemies, bullets, effects
@@ -28,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 @Composable
 fun PlayArea(
     gameState: GameState,
+    season: Season,
     onForceCombat: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -35,7 +41,7 @@ fun PlayArea(
     val context = LocalContext.current
     val bulletKim: ImageBitmap = remember {
         // Load and chroma-key the bullet image to remove connected gray-ish background
-        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.bullet_kim)
+        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.bullet_metal)
             .copy(Bitmap.Config.ARGB_8888, true)
         val keyColor = raw.getPixel(0, 0)
         chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
@@ -43,43 +49,121 @@ fun PlayArea(
     
     val bulletBang: ImageBitmap = remember {
         // Load and chroma-key the bullet băng image
-        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.bullet_bang)
+        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.bullet_ice)
             .copy(Bitmap.Config.ARGB_8888, true)
         val keyColor = raw.getPixel(0, 0)
         chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
     }
     
-    val bgBitmap: ImageBitmap = remember {
+    val bgBitmap: ImageBitmap = remember(season) {
         // Decode background downsampled to screen size to avoid huge bitmaps
         val dm = context.resources.displayMetrics
+        val backgroundResId = when (season) {
+            Season.SPRING -> com.baothanhbin.game2d.R.drawable.bg_spring
+            Season.SUMMER -> com.baothanhbin.game2d.R.drawable.bg_summner
+            Season.AUTUMN -> com.baothanhbin.game2d.R.drawable.bg_autumn
+            Season.WINTER -> com.baothanhbin.game2d.R.drawable.bg_winter
+        }
         decodeDownsampledResource(
             context = context,
-            resId = com.baothanhbin.game2d.R.drawable.bg_winter,
+            resId = backgroundResId,
             reqWidth = dm.widthPixels,
             reqHeight = dm.heightPixels
         )
     }
     
-    // Decode multiple GIF enemies
-    val basic1Frames: List<ImageBitmap>? = remember {
-        try { decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.enermy_basic_1, frameSamples = 12) } catch (_: Throwable) { null }
-    }
-    val basic2Frames: List<ImageBitmap>? = remember {
-        try { decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.enermy_basic_2, frameSamples = 12) } catch (_: Throwable) { null }
-    }
-    val fireRowFrames: List<ImageBitmap>? = remember {
-        try { decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.fire_row, frameSamples = 10) } catch (_: Throwable) { null }
-    }
-    val waveFrames: List<ImageBitmap>? = remember {
-        try { decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.wave, frameSamples = 12) } catch (_: Throwable) { null }
+    // Decode multiple GIF enemies on background thread
+    var monter_basic by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var monter_fast by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var monter_tank by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var boss1_frames by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var boss2_frames by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var boss3_frames by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var murid_frames by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var fireRowFrames by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    var waveFrames by remember { mutableStateOf<List<ImageBitmap>?>(null) }
+    
+    // Load GIFs on background thread
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            try {
+                monter_basic = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.monter_basic, frameSamples = 12)
+            } catch (_: Throwable) { 
+                monter_basic = null 
+            }
+            
+            try {
+                monter_fast = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.monter_paper_hp_fast_walk, frameSamples = 12)
+            } catch (_: Throwable) { 
+                monter_fast = null 
+            }
+            
+            try {
+                monter_tank = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.monter_big_hp_slow_walk, frameSamples = 12)
+            } catch (_: Throwable) { 
+                monter_tank = null 
+            }
+            
+            try {
+                boss1_frames = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.boss1, frameSamples = 12)
+                println("BOSS DEBUG: ✅ Boss1 frames loaded successfully, count: ${boss1_frames?.size}")
+            } catch (e: Throwable) { 
+                boss1_frames = null 
+                println("BOSS DEBUG: ❌ Failed to load boss1 frames: ${e.message}")
+            }
+            
+            try {
+                boss2_frames = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.boss2, frameSamples = 12)
+                println("BOSS DEBUG: ✅ Boss2 frames loaded successfully, count: ${boss2_frames?.size}")
+            } catch (e: Throwable) { 
+                boss2_frames = null 
+                println("BOSS DEBUG: ❌ Failed to load boss2 frames: ${e.message}")
+            }
+            
+            try {
+                boss3_frames = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.boss3, frameSamples = 12)
+                println("BOSS DEBUG: ✅ Boss3 frames loaded successfully, count: ${boss3_frames?.size}")
+            } catch (e: Throwable) { 
+                boss3_frames = null 
+                println("BOSS DEBUG: ❌ Failed to load boss3 frames: ${e.message}")
+            }
+            
+            try {
+                murid_frames = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.murid, frameSamples = 12)
+                println("MURID DEBUG: ✅ Murid frames loaded successfully, count: ${murid_frames?.size}")
+            } catch (e: Throwable) { 
+                murid_frames = null 
+                println("MURID DEBUG: ❌ Failed to load murid frames: ${e.message}")
+            }
+            
+            try {
+                fireRowFrames = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.fire_row, frameSamples = 10)
+            } catch (_: Throwable) { 
+                fireRowFrames = null 
+            }
+            
+            try {
+                waveFrames = decodeGifFrames(context = context, resId = com.baothanhbin.game2d.R.raw.wave, frameSamples = 12)
+            } catch (_: Throwable) { 
+                waveFrames = null 
+            }
+        }
     }
     
-    val freezeImage: ImageBitmap = remember {
-        // Load freeze.png image
-        val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.freeze)
-            .copy(Bitmap.Config.ARGB_8888, true)
-        val keyColor = raw.getPixel(0, 0)
-        chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
+    // Load freeze image on background thread
+    var freezeImage by remember { mutableStateOf<ImageBitmap?>(null) }
+    
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            try {
+                val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.freeze)
+                    .copy(Bitmap.Config.ARGB_8888, true)
+                val keyColor = raw.getPixel(0, 0)
+                freezeImage = chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
+            } catch (_: Throwable) {
+                freezeImage = null
+            }
+        }
     }
     Box(
         modifier = modifier
@@ -96,18 +180,36 @@ fun PlayArea(
             
 
             withTransform({ scale(scaleX = scaleX, scaleY = scaleY) }) {
-                // Vẽ enemies
+                // Vẽ enemies dựa theo enemyType và archetype
                 gameState.enemies.forEach { enemy ->
-                    if (enemy.enemyType == EnemyType.ROBE) {
-                        val frames = when (enemy.sprite) {
-                            EnemySprite.BASIC_1 -> basic1Frames
-                            EnemySprite.BASIC_2 -> basic2Frames
-                            else -> basic1Frames
+                    val frames = when {
+                        enemy.enemyType == EnemyType.BOSS1 -> {
+                            println("BOSS DEBUG: 🐉 Drawing BOSS1 enemy! Boss1 frames available: ${boss1_frames != null}, count: ${boss1_frames?.size}")
+                            boss1_frames
                         }
-                        if (frames != null && frames.isNotEmpty()) {
-                            val frame = getGifFrameForTime(frames)
-                            drawEnemy(enemy, frame, freezeImage)
+                        enemy.enemyType == EnemyType.BOSS2 -> {
+                            println("BOSS DEBUG: 🐉 Drawing BOSS2 enemy! Boss2 frames available: ${boss2_frames != null}, count: ${boss2_frames?.size}")
+                            boss2_frames
                         }
+                        enemy.enemyType == EnemyType.BOSS3 -> {
+                            println("BOSS DEBUG: 🐉 Drawing BOSS3 enemy! Boss3 frames available: ${boss3_frames != null}, count: ${boss3_frames?.size}")
+                            boss3_frames
+                        }
+                        enemy.enemyType == EnemyType.MURID -> {
+                            println("MURID DEBUG: 🏃 Drawing MURID enemy! Murid frames available: ${murid_frames != null}, count: ${murid_frames?.size}")
+                            murid_frames
+                        }
+                        enemy.archetype == EnemyArchetype.BASIC -> monter_basic
+                        enemy.archetype == EnemyArchetype.FAST -> monter_fast
+                        enemy.archetype == EnemyArchetype.TANK -> monter_tank
+                        else -> monter_basic
+                    }
+                    if (frames != null && frames.isNotEmpty() && freezeImage != null) {
+                        val frame = getGifFrameForTime(frames)
+                        drawEnemy(enemy, frame, freezeImage!!)
+                    } else {
+                        println("BOSS DEBUG: ❌ Using placeholder for enemy type: ${enemy.enemyType}, frames: ${frames?.size}")
+                        drawEnemyPlaceholder(enemy)
                     }
                 }
                 
@@ -121,11 +223,14 @@ fun PlayArea(
                 }
                 
                 // Vẽ effects (bao gồm FIRE_ROW và WAVE)
+                val currentFireRowFrames = fireRowFrames
+                val currentWaveFrames = waveFrames
+                
                 gameState.effects.forEach { effect ->
                     when (effect.type) {
                         EffectType.FIRE_ROW -> {
-                            if (fireRowFrames != null && fireRowFrames.isNotEmpty()) {
-                                val frame = getGifFrameForTime(fireRowFrames)
+                            if (currentFireRowFrames != null && currentFireRowFrames.isNotEmpty()) {
+                                val frame = getGifFrameForTime(currentFireRowFrames)
                                 // Use game-space dimensions; the outer transform will scale to canvas
                                 val width = com.baothanhbin.game2d.game.model.GameState.SCREEN_WIDTH
                                 val height = effect.size
@@ -142,8 +247,8 @@ fun PlayArea(
                             }
                         }
                         EffectType.WAVE -> {
-                            if (waveFrames != null && waveFrames.isNotEmpty()) {
-                                val frame = getGifFrameForTime(waveFrames)
+                            if (currentWaveFrames != null && currentWaveFrames.isNotEmpty()) {
+                                val frame = getGifFrameForTime(currentWaveFrames)
                                 // Use game-space dimensions; let the transform handle scaling
                                 val width = effect.width
                                 val height = effect.size
@@ -163,6 +268,8 @@ fun PlayArea(
                         else -> drawEffect(effect)
                     }
                 }
+                
+                // Freeze effects cho tướng được render trong UnitCard (UI layer)
             }
         }
     }
@@ -273,24 +380,40 @@ private fun DrawScope.drawEnemy(enemy: Enemy, boarBitmap: ImageBitmap, freezeIma
     )
     
     // Vẽ HP bar
-    if (enemy.hpPercentage < 1f) {
-        val barWidth = enemy.size * 1.2f
-        val barHeight = 6f
-        val barY = enemy.y - enemy.size / 2f - 10f
+    val barWidth = enemy.size * 1.2f
+    val barHeight = 6f
+    val barY = enemy.y - enemy.size / 2f - 10f
+    
+    // Background bar (luôn vẽ)
+    drawRect(
+        color = Color.Red,
+        topLeft = Offset(enemy.x - barWidth / 2f, barY),
+        size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
+    )
+    
+    // HP bar (luôn vẽ)
+    drawRect(
+        color = Color.Green,
+        topLeft = Offset(enemy.x - barWidth / 2f, barY),
+        size = androidx.compose.ui.geometry.Size(barWidth * enemy.hpPercentage, barHeight)
+    )
+    
+    // Vẽ text HP trên thanh máu
+    drawIntoCanvas { canvas ->
+        val hpText = "${enemy.currentHp.toInt()}/${enemy.maxHp.toInt()}"
+        val textY = enemy.y - enemy.size / 2f - 15f
         
-        // Background bar
-        drawRect(
-            color = Color.Red,
-            topLeft = Offset(enemy.x - barWidth / 2f, barY),
-            size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
-        )
+        // Tạo paint cho text
+        val paint = android.graphics.Paint().apply {
+            color = Color.White.toArgb()
+            textSize = 26f
+            textAlign = android.graphics.Paint.Align.CENTER
+            isAntiAlias = true
+            setShadowLayer(3f, 2f, 2f, Color.Black.toArgb())
+        }
         
-        // HP bar
-        drawRect(
-            color = Color.Green,
-            topLeft = Offset(enemy.x - barWidth / 2f, barY),
-            size = androidx.compose.ui.geometry.Size(barWidth * enemy.hpPercentage, barHeight)
-        )
+        // Vẽ text HP
+        canvas.nativeCanvas.drawText(hpText, enemy.x, textY, paint)
     }
     
     // Vẽ trạng thái đóng băng và làm chậm
@@ -340,20 +463,40 @@ private fun DrawScope.drawEnemyPlaceholder(enemy: Enemy) {
         size = androidx.compose.ui.geometry.Size(width, height)
     )
     // HP bar (giống như drawEnemy)
-    if (enemy.hpPercentage < 1f) {
-        val barWidth = enemy.size * 1.2f
-        val barHeight = 6f
-        val barY = enemy.y - enemy.size / 2f - 10f
-        drawRect(
-            color = Color.Red,
-            topLeft = Offset(enemy.x - barWidth / 2f, barY),
-            size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
-        )
-        drawRect(
-            color = Color.Green,
-            topLeft = Offset(enemy.x - barWidth / 2f, barY),
-            size = androidx.compose.ui.geometry.Size(barWidth * enemy.hpPercentage, barHeight)
-        )
+    val barWidth = enemy.size * 1.2f
+    val barHeight = 6f
+    val barY = enemy.y - enemy.size / 2f - 10f
+    
+    // Background bar (luôn vẽ)
+    drawRect(
+        color = Color.Red,
+        topLeft = Offset(enemy.x - barWidth / 2f, barY),
+        size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
+    )
+    
+    // HP bar (luôn vẽ)
+    drawRect(
+        color = Color.Green,
+        topLeft = Offset(enemy.x - barWidth / 2f, barY),
+        size = androidx.compose.ui.geometry.Size(barWidth * enemy.hpPercentage, barHeight)
+    )
+    
+    // Vẽ text HP trên thanh máu
+    drawIntoCanvas { canvas ->
+        val hpText = "${enemy.currentHp.toInt()}/${enemy.maxHp.toInt()}"
+        val textY = enemy.y - enemy.size / 2f - 15f
+        
+        // Tạo paint cho text
+        val paint = android.graphics.Paint().apply {
+            color = Color.White.toArgb()
+            textSize = 16f
+            textAlign = android.graphics.Paint.Align.CENTER
+            isAntiAlias = true
+            setShadowLayer(3f, 2f, 2f, Color.Black.toArgb())
+        }
+        
+        // Vẽ text HP
+        canvas.nativeCanvas.drawText(hpText, enemy.x, textY, paint)
     }
 }
 

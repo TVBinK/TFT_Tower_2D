@@ -10,46 +10,47 @@ enum class HeroDescription(
     val star2Description: String,
     val star3Description: String
 ) {
-    METAL(
-        heroType = HeroType.METAL,
-        displayName = "Metal",
-        star1Description = "★☆☆ Summons 1 blazing fire line, dealing heavy damage.",
-        star2Description = "★★☆ Summons 2 blazing fire lines.",
-        star3Description = "★★★ Summons 3 blazing fire lines for maximum devastation."
-    ),
-    
-    FLOWER(
-        heroType = HeroType.FLOWER,
-        displayName = "Flower",
-        star1Description = "★☆☆ Summons 1 blooming flower, healing allies.",
-        star2Description = "★★☆ Summons 2 blooming flowers.",
-        star3Description = "★★★ Summons 3 blooming flowers for maximum healing."
-    ),
-    
-    WATER(
-        heroType = HeroType.WATER,
-        displayName = "Water",
-        star1Description = "★☆☆ Raises 1 towering water column, pushing enemies back.",
-        star2Description = "★★☆ Unleashes 2 water columns.",
-        star3Description = "★★★ Conjures 3 water columns."
-    ),
-    
     FIRE(
         heroType = HeroType.FIRE,
         displayName = "Fire",
-        star1Description = "★☆☆ Fires arrows with base damage and speed.",
-        star2Description = "★★☆ +20 damage and +5% attack speed.",
-        star3Description = "★★★ +50 damage and +15% attack speed."
+        star1Description = "★☆☆ Creates a blazing fire line that deals high damage and lasts 5 seconds.",
+        star2Description = "★★☆ Duration increases to 7 seconds.",
+        star3Description = "★★★ Duration increases to 9 seconds and deals splash damage."
     ),
-    
+
+    WATER(
+        heroType = HeroType.WATER,
+        displayName = "Water",
+        star1Description = "★☆☆ Summons a wave of water that pushes enemies back in a column.",
+        star2Description = "★★☆ Unleashes 2 water waves.",
+        star3Description = "★★★ Summons 3 powerful water waves for greater control."
+    ),
+
+    FLOWER(
+        heroType = HeroType.FLOWER,
+        displayName = "Flower",
+        star1Description = "★☆☆ Restores +2 HP to the base every 10 seconds.",
+        star2Description = "★★☆ Restores +3 HP every 10 seconds.",
+        star3Description = "★★★ Restores +5 HP every 8 seconds and reduces skill cooldown."
+    ),
+
     ICE(
         heroType = HeroType.ICE,
         displayName = "Ice",
-        star1Description = "★☆☆ Attacks slow enemies with 5% chance to freeze.",
-        star2Description = "★★☆ Freeze chance increases to 10%.",
-        star3Description = "★★★ Freeze chance increases to 20%."
+        star1Description = "★☆☆ Shoots slowing projectiles with a small chance to freeze enemies briefly.",
+        star2Description = "★★☆ Increases damage and freeze chance.",
+        star3Description = "★★★ Greatly boosts damage and extends freeze duration."
+    ),
+
+    METAL(
+        heroType = HeroType.METAL,
+        displayName = "Metal",
+        star1Description = "★☆☆ Fires arrows that deal single-target damage.",
+        star2Description = "★★☆ Increases attack damage and shooting speed.",
+        star3Description = "★★★ Further boosts both damage and speed, with piercing effect."
     );
-    
+
+
     /**
      * Tìm description theo HeroType
      */

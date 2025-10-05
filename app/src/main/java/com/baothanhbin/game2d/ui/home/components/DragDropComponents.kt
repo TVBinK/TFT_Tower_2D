@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,13 +22,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.util.Log
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.res.painterResource
+import com.baothanhbin.game2d.game.model.Season
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Star
@@ -43,7 +44,7 @@ fun AnimatedUnitImage(
     unit: com.baothanhbin.game2d.game.model.Unit,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
-    frameDurationMs: Long = 120L,
+    frameDurationMs: Long = 200L, // Tăng từ 120L lên 200L để animation chậm hơn
     isShooting: Boolean
 ) {
     // Only animate when shooting; otherwise show idle frame
@@ -69,6 +70,7 @@ fun AnimatedUnitImage(
             }
             painterResource(id = resId)
         }
+
         HeroType.FLOWER -> {
             val resId = if (isShooting) {
                 if (frameIndex == 0) R.drawable.hero_flower1 else R.drawable.hero_flower2
@@ -77,6 +79,7 @@ fun AnimatedUnitImage(
             }
             painterResource(id = resId)
         }
+
         HeroType.FIRE -> {
             val resId = if (isShooting) {
                 if (frameIndex == 0) R.drawable.hero_fire1 else R.drawable.hero_fire2
@@ -85,6 +88,7 @@ fun AnimatedUnitImage(
             }
             painterResource(id = resId)
         }
+
         HeroType.WATER -> {
             val resId = if (isShooting) {
                 if (frameIndex == 0) R.drawable.hero_water1 else R.drawable.hero_water2
@@ -93,6 +97,7 @@ fun AnimatedUnitImage(
             }
             painterResource(id = resId)
         }
+
         HeroType.ICE -> {
             val resId = if (isShooting) {
                 if (frameIndex == 0) R.drawable.hero_ice1 else R.drawable.hero_ice2
@@ -101,7 +106,6 @@ fun AnimatedUnitImage(
             }
             painterResource(id = resId)
         }
-        else -> painterResource(id = R.drawable.golden)
     }
 
     Image(
@@ -134,14 +138,14 @@ fun DraggableBenchSlot(
     var startDragPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var cumulativeOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var isPositioned by remember { mutableStateOf(false) }
-    
+
     // Debug: Log when globalPosition changes
     LaunchedEffect(globalPosition) {
         if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
             isPositioned = true
         }
     }
-    
+
     Card(
         modifier = modifier
             .size(width = UiDimens.BENCH_SLOT_WIDTH, height = UiDimens.BENCH_SLOT_HEIGHT)
@@ -156,24 +160,28 @@ fun DraggableBenchSlot(
                         onDragStart = { offset ->
                             // Calculate center of bench slot (70dp x 90dp)
                             val cardSizeInPx = with(density) {
-                                androidx.compose.ui.geometry.Size(UiDimens.BENCH_SLOT_WIDTH.toPx(), UiDimens.BENCH_SLOT_HEIGHT.toPx())
-                            }
-                            
-                            // Use global position if available, otherwise calculate from offset
-                            val centerPosition = if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
-                                // Use global position and add center offset
-                                globalPosition + androidx.compose.ui.geometry.Offset(
-                                    cardSizeInPx.width / 2f,
-                                    cardSizeInPx.height / 2f
+                                androidx.compose.ui.geometry.Size(
+                                    UiDimens.BENCH_SLOT_WIDTH.toPx(),
+                                    UiDimens.BENCH_SLOT_HEIGHT.toPx()
                                 )
-                            } else {
-                                // Fallback: use the touch offset directly (less accurate)
-                                offset
                             }
-                            
+
+                            // Use global position if available, otherwise calculate from offset
+                            val centerPosition =
+                                if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
+                                    // Use global position and add center offset
+                                    globalPosition + androidx.compose.ui.geometry.Offset(
+                                        cardSizeInPx.width / 2f,
+                                        cardSizeInPx.height / 2f
+                                    )
+                                } else {
+                                    // Fallback: use the touch offset directly (less accurate)
+                                    offset
+                                }
+
                             startDragPosition = centerPosition
                             cumulativeOffset = androidx.compose.ui.geometry.Offset.Zero
-                            
+
                             Log.d("DragBench", "Start position: $startDragPosition")
                             onDragStart(unit, startDragPosition)
                         },
@@ -257,6 +265,7 @@ fun DraggableBoardSlot(
     canManage: Boolean,
     isDragTarget: Boolean,
     selectedUnit: com.baothanhbin.game2d.game.model.Unit?,
+    season: Season,
     onRecall: () -> Unit,
     onDeploy: (String) -> Unit,
     onDragOver: (BoardSlot) -> Unit,
@@ -267,7 +276,7 @@ fun DraggableBoardSlot(
 ) {
     var slotPosition by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var slotSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
-    
+
     Card(
         modifier = modifier
             .onGloballyPositioned { coordinates ->
@@ -315,14 +324,16 @@ fun DraggableBoardSlot(
                             indication = null
                         ) { onRecall() }
                     }
+
                     selectedUnit != null && canManage && isActive && unit == null -> {
                         Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { 
+                        ) {
                             onDeploy(selectedUnit.id)
                         }
                     }
+
                     else -> Modifier
                 }
             ),
@@ -336,9 +347,15 @@ fun DraggableBoardSlot(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Background slot image
+            // Background slot image based on season
+            val slotImageResId = when (season) {
+                Season.SPRING -> R.drawable.bg_slot_spring
+                Season.SUMMER -> R.drawable.bg_slot_autumn // Fallback to winter for summer
+                Season.AUTUMN -> R.drawable.bg_slot_autumn
+                Season.WINTER -> R.drawable.bg_slot_winter
+            }
             Image(
-                painter = painterResource(id = R.drawable.slot),
+                painter = painterResource(id = slotImageResId),
                 contentDescription = "Slot background",
                 modifier = Modifier
                     .fillMaxSize()
@@ -362,12 +379,14 @@ fun DraggableBoardSlot(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(2.dp),
-                    isShooting = isShooting
+                    isShooting = isShooting,
+                    showBorder = false // Không hiển thị viền trong DraggableBoardSlot
                 )
-                
+
                 // Cooldown indicator overlay at bottom
                 if (unit.cooldownRemainingMs > 0) {
-                    val progress = 1f - (unit.cooldownRemainingMs.toFloat() / unit.actualFireRateMs.toFloat())
+                    val progress =
+                        1f - (unit.cooldownRemainingMs.toFloat() / unit.actualFireRateMs.toFloat())
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -390,7 +409,7 @@ fun DraggableBoardSlot(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Spacer(modifier = Modifier.weight(1f))
-                    
+
                     if (!isActive) {
                         Text(
                             text = "Need level ${slot.position + 1}",
@@ -403,21 +422,7 @@ fun DraggableBoardSlot(
                                 )
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         )
-                    } else if (selectedUnit != null && unit == null) {
-                        Text(
-                            text = "Click to deploy",
-                            color = Color(0xFF4CAF50),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .background(
-                                    color = Color.Black.copy(alpha = 0.6f),
-                                    shape = RoundedCornerShape(4.dp)
-                                )
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
                     }
-                    
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
@@ -432,31 +437,43 @@ fun DraggableBoardSlot(
 fun UnitCard(
     unit: com.baothanhbin.game2d.game.model.Unit,
     modifier: Modifier = Modifier,
-    isShooting: Boolean = false
+    isShooting: Boolean = false,
+    showBorder: Boolean = true
 ) {
     Box(
         modifier = modifier
             .size(32.dp)
-            .background(
-                color = Color(unit.type.color).copy(alpha = 0.2f),
-                shape = RoundedCornerShape(6.dp)
-            )
-            .border(
-                width = 2.dp,
-                color = Color(unit.type.color),
-                shape = RoundedCornerShape(6.dp)
-            )
+            .let { baseModifier ->
+                val withBackground = if (showBorder) {
+                    baseModifier.background(
+                        color = Color(unit.type.color).copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                } else {
+                    baseModifier
+                }
+                
+                if (showBorder) {
+                    withBackground.border(
+                        width = 2.dp,
+                        color = if (unit.isFrozen) Color(0xFF00FFFF) else Color(unit.type.color), // Cyan border khi frozen
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                } else {
+                    withBackground
+                }
+            }
     ) {
-		// Animated image fills the entire card
+        // Animated image fills the entire card
         AnimatedUnitImage(
-			unit = unit,
-			modifier = Modifier
-				.fillMaxSize()
-				.padding(1.dp),
-			contentScale = ContentScale.FillBounds,
+            unit = unit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(1.dp),
+            contentScale = ContentScale.FillBounds,
             isShooting = isShooting
-		)
-        
+        )
+
         // Stars overlay at top-right
         Box(
             modifier = Modifier
@@ -470,31 +487,33 @@ fun UnitCard(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "Star",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(6.dp)
+                        tint = Color.Yellow,
+                        modifier = Modifier.size(8.dp)
                     )
                 }
             }
         }
-        
-        // Star overlay at bottom-left
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(2.dp)
-        ) {
-            Text(
-                text = unit.star.symbol,
-                color = Color.White,
-                fontSize = 6.sp,
-                fontWeight = FontWeight.Bold,
+
+        // Freeze overlay khi tướng bị đóng băng - hiển thị freeze effect
+        if (unit.isFrozen) {
+            Box(
                 modifier = Modifier
+                    .fillMaxSize()
                     .background(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(2.dp)
+                        color = Color(0xFF00FFFF).copy(alpha = 0.2f), // Cyan tint
+                        shape = RoundedCornerShape(6.dp)
                     )
-                    .padding(horizontal = 2.dp, vertical = 1.dp)
-            )
+            ) {
+                // Freeze icon ở giữa
+                Icon(
+                    imageVector = Icons.Default.AcUnit,
+                    contentDescription = "Frozen",
+                    tint = Color(0xFF00FFFF),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(30.dp)
+                )
+            }
         }
     }
 }

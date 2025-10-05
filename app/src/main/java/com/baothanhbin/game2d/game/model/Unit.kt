@@ -12,15 +12,16 @@ data class Unit(
     val baseDamage: Float,
     val baseFireRateMs: Long,
     val bulletSpeed: Float = 300f,
-    val range: Float = 1600f,  // Tăng tầm bắn để bắn sớm hơn
-    val manaCost: Float = 20f, // Cost mana để bắn
+    val range: Float = 2000f,  // Tăng tầm bắn để bắn sớm hơn
     val cooldownRemainingMs: Long = 0L,
     val lastShotAtMs: Long = 0L,
     val lastWaveAtMs: Long = 0L, // Thời gian tạo wave cuối cùng
     
     // Vị trí nếu đang trên board
     val boardPosition: BoardSlot? = null,
-    val isOnBoard: Boolean = false
+    val isOnBoard: Boolean = false,
+    val isFrozen: Boolean = false,
+    val freezeEndTime: Long = 0L
 ) {
     
     /**
@@ -42,6 +43,12 @@ data class Unit(
             Star.TWO -> (baseFireRateMs * 0.9f).toLong().coerceAtLeast(MIN_FIRE_RATE_MS)
             Star.THREE -> (baseFireRateMs * 0.8f).toLong().coerceAtLeast(MIN_FIRE_RATE_MS)
         }
+
+    /**
+     * Có thể bắn?
+     */
+    val canAct: Boolean
+        get() = !isFrozen
     
     /**
      * Giá bán lại (cố định cho tất cả hero)
@@ -66,14 +73,13 @@ data class Unit(
          * Tạo Unit mới theo type
          */
         fun create(type: HeroType): Unit {
-            val (damage, fireRate, manaCost) = getBaseStatsForType(type)
+            val (damage, fireRate) = getBaseStatsForType(type)
             val currentTime = System.currentTimeMillis()
             
             return Unit(
                 type = type,
                 baseDamage = damage,
                 baseFireRateMs = fireRate,
-                manaCost = manaCost,
                 // Khởi tạo cooldown ngẫu nhiên để tránh tất cả bắn cùng lúc khi vào game
                 cooldownRemainingMs = (Math.random() * fireRate).toLong().coerceAtLeast(0L),
                 lastShotAtMs = currentTime,
@@ -82,15 +88,15 @@ data class Unit(
         }
         
         /**
-         * Lấy stats cơ bản theo type
+         * Dame cơ bản
          */
-        private fun getBaseStatsForType(type: HeroType): Triple<Float, Long, Float> {
+        private fun getBaseStatsForType(type: HeroType): Pair<Float, Long> {
             return when (type) {
-                HeroType.METAL -> Triple(25f, 2000L, 25f)  // Damage, FireRate, ManaCost
-                HeroType.FLOWER -> Triple(20f, 2200L, 20f)  // Healer, chậm hơn
-                HeroType.WATER -> Triple(30f, 1800L, 30f)   // Strong, nhanh hơn
-                HeroType.FIRE -> Triple(35f, 1600L, 35f)    // Very strong
-                HeroType.ICE -> Triple(22f, 2400L, 22f)     // Slower, freeze effect
+                HeroType.METAL -> Pair(15f, 2000L)  // Damage, FireRate
+                HeroType.FLOWER -> Pair(0f, 2200L)  // Healer, chậm hơn
+                HeroType.WATER -> Pair(0f, 1800L)   // Strong, nhanh hơn
+                HeroType.FIRE -> Pair(0f, 1600L)    // Very strong
+                HeroType.ICE -> Pair(10f, 2400L)     // Slower, freeze effect
             }
         }
         
@@ -118,6 +124,24 @@ data class Unit(
             boardPosition = slot,
             isOnBoard = slot != null
         )
+    }
+
+    /**
+     * Đóng băng unit trong durationMs
+     */
+    fun freeze(durationMs: Long): Unit {
+        val end = System.currentTimeMillis() + durationMs
+        return copy(isFrozen = true, freezeEndTime = end)
+    }
+
+    /**
+     * Cập nhật trạng thái (hết đóng băng?)
+     */
+    fun updateStatus(): Unit {
+        if (isFrozen && System.currentTimeMillis() >= freezeEndTime) {
+            return copy(isFrozen = false, freezeEndTime = 0L)
+        }
+        return this
     }
 
 }

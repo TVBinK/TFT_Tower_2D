@@ -219,7 +219,7 @@ fun ShopEntryRow(
                                      HeroType.WATER -> R.drawable.hero_water
                                      HeroType.FIRE -> R.drawable.hero_fire
                                      HeroType.ICE -> R.drawable.hero_ice
-                                     null -> R.drawable.golden
+                                     null -> R.drawable.hero_metal
                                  }
                              ),
                              contentDescription = slot.unit?.type?.displayName ?: "Unit",

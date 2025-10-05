@@ -11,22 +11,17 @@ data class Player(
     val board: Map<BoardSlot, Unit?> = BoardSlot.values().associateWith { null },
     val lives: Int = 100,
     val score: Long = 0L,
-    val wave: Int = 1,
+    val day: Int = 1,
     val gameTimeMs: Long = 0L,
     val winStreak: Int = 0,
     val loseStreak: Int = 0,
-    val freeRerollsRemaining: Int = 1,
-    // Hệ thống Mana mới
-    val currentMana: Float = 100f,
-    val maxMana: Float = 100f,
-    val manaRegenRate: Float = 10f, // Mana hồi phục mỗi giây
-    val lastManaUpdateTime: Long = 0L
+    val freeRerollsRemaining: Int = 1
 ) {
     
     companion object {
         const val MAX_BENCH_SIZE = 9
         const val MAX_BOARD_SIZE = 5
-        const val MAX_LEVEL = 9
+        const val MAX_LEVEL = 5
         
         /**
          * Tạo tướng ban đầu cho player
@@ -59,11 +54,7 @@ data class Player(
             2 to 2,
             3 to 6,
             4 to 10,
-            5 to 18,
-            6 to 30,
-            7 to 36,
-            8 to 56,
-            9 to 72
+            5 to 18
         )
         
         // Giá mua XP
@@ -125,17 +116,6 @@ data class Player(
     val interest: Int
         get() = minOf(gold / 10 * INTEREST_PER_10_GOLD, MAX_INTEREST)
     
-    /**
-     * Có đủ mana để bắn không
-     */
-    val hasEnoughMana: Boolean
-        get() = currentMana >= 20f // Cost cơ bản để bắn
-    
-    /**
-     * Mana hiện tại dưới dạng phần trăm
-     */
-    val manaPercentage: Float
-        get() = (currentMana / maxMana).coerceIn(0f, 1f)
     
     /**
      * Tổng thu nhập đầu vòng
@@ -236,36 +216,4 @@ data class Player(
         )
     }
     
-    /**
-     * Cập nhật mana theo thời gian
-     */
-    fun updateMana(currentTimeMs: Long): Player {
-        if (lastManaUpdateTime == 0L) {
-            return copy(lastManaUpdateTime = currentTimeMs)
-        }
-        
-        val deltaTimeSeconds = (currentTimeMs - lastManaUpdateTime) / 1000f
-        val newMana = (currentMana + manaRegenRate * deltaTimeSeconds).coerceAtMost(maxMana)
-        
-        return copy(
-            currentMana = newMana,
-            lastManaUpdateTime = currentTimeMs
-        )
-    }
-    
-    /**
-     * Sử dụng mana để bắn
-     */
-    fun useMana(cost: Float): Player? {
-        return if (currentMana >= cost) {
-            copy(currentMana = (currentMana - cost).coerceAtLeast(0f))
-        } else null
-    }
-    
-    /**
-     * Hồi phục mana (khi level up hoặc item)
-     */
-    fun restoreMana(amount: Float): Player {
-        return copy(currentMana = (currentMana + amount).coerceAtMost(maxMana))
-    }
 }

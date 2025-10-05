@@ -188,3 +188,23 @@ private fun UnitActionsRow(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun BenchRowPreview() {
+    val samplePlayer = Player.createWithStartingUnits()
+    BenchRow(
+        player = samplePlayer,
+        canManageUnits = true,
+        selectedUnit = null,
+        draggingUnit = null,
+        isDragging = false,
+        dragOffset = androidx.compose.ui.geometry.Offset.Zero,
+        onSellUnit = {},
+        onSwapUnit = { _, _ -> },
+        onSelectedUnitChange = {},
+        onDragStart = { _, _ -> },
+        onDragEnd = {},
+        onDragUpdate = {}
+    )
+}
