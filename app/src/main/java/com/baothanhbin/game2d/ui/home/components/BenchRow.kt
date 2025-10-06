@@ -175,13 +175,6 @@ private fun UnitActionsRow(
                     )
                 }
             }
-            
-            // Unit stats
-            Text(
-                text = "Damage: ${unit.actualDamage.toInt()} | Fire Rate: ${unit.actualFireRateMs}ms",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 10.sp
-            )
         }
     }
 }

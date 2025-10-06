@@ -55,6 +55,12 @@ class SpawnSystem {
             
             // Spawn boss nếu ở vòng 5, 10, 15, nếu không spawn enemy thường
             if (shouldSpawnBoss(state.gameMode, state.player.day)) {
+                // Phát cảnh báo boss một tick trước khi spawn nếu chưa cảnh báo
+                if (state.lastBossWarningDay != state.player.day) {
+                    return state.addBossWarningForDay(state.player.day).copy(
+                        lastSpawnTimeMs = currentTime // Delay việc spawn boss đến tick sau
+                    )
+                }
                 println("SPAWN DEBUG: 🐉 CREATING BOSS! Day: ${state.player.day}")
                 val boss = createBossEnemy(state.player.day, state.player)
                 // Boss thay thế HOÀN TOÀN tất cả enemies trong ngày - chỉ spawn 1 boss duy nhất

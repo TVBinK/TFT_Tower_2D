@@ -346,4 +346,12 @@ class GameEngine(
             }
         }
     }
+    
+    /**
+     * Clear processed sound events
+     */
+    fun clearSoundEvents() {
+        val currentState = _gameState.value
+        _gameState.value = currentState.clearSoundEvents()
+    }
 }

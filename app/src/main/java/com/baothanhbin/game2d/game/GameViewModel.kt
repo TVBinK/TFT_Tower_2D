@@ -178,6 +178,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    /**
+     * Clear processed sound events
+     */
+    fun clearSoundEvents() {
+        gameEngine.clearSoundEvents()
+    }
+    
     override fun onCleared() {
         super.onCleared()
         stopGameLoop()

@@ -71,6 +71,10 @@ dependencies {
     // Lottie Compose
     implementation(libs.lottie.compose)
     
+    // Coil for GIF support
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+    
     // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     

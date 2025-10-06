@@ -55,21 +55,55 @@ fun PlayArea(
         chromaKeyBitmap(raw, keyColor, tolerance = 60).asImageBitmap()
     }
     
-    val bgBitmap: ImageBitmap = remember(season) {
-        // Decode background downsampled to screen size to avoid huge bitmaps
-        val dm = context.resources.displayMetrics
-        val backgroundResId = when (season) {
-            Season.SPRING -> com.baothanhbin.game2d.R.drawable.bg_spring
-            Season.SUMMER -> com.baothanhbin.game2d.R.drawable.bg_summner
-            Season.AUTUMN -> com.baothanhbin.game2d.R.drawable.bg_autumn
-            Season.WINTER -> com.baothanhbin.game2d.R.drawable.bg_winter
+    // Animated background using Movie API (giống SplashScreen)
+    var bgMovie by remember(season) { mutableStateOf<Movie?>(null) }
+    var bgCurrentFrame by remember { mutableStateOf<ImageBitmap?>(null) }
+    var bgStartTime by remember { mutableStateOf(0L) }
+    
+    // Load background GIF
+    LaunchedEffect(season) {
+        withContext(Dispatchers.IO) {
+            val resId = when (season) {
+                Season.SPRING -> com.baothanhbin.game2d.R.raw.bg_spring
+                Season.SUMMER -> com.baothanhbin.game2d.R.raw.bg_summer
+                Season.AUTUMN -> com.baothanhbin.game2d.R.raw.bg_autumn
+                Season.WINTER -> com.baothanhbin.game2d.R.raw.bg_winter
+            }
+            try {
+                val input = context.resources.openRawResource(resId)
+                bgMovie = Movie.decodeStream(input)
+                input.close()
+                bgStartTime = System.currentTimeMillis()
+            } catch (e: Exception) {
+                bgMovie = null
+            }
         }
-        decodeDownsampledResource(
-            context = context,
-            resId = backgroundResId,
-            reqWidth = dm.widthPixels,
-            reqHeight = dm.heightPixels
-        )
+    }
+    
+    // Animate background frames at native GIF speed
+    LaunchedEffect(bgMovie) {
+        val movie = bgMovie
+        if (movie != null) {
+            while (true) {
+                val currentTime = System.currentTimeMillis() - bgStartTime
+                val duration = movie.duration()
+                val time = if (duration > 0) (currentTime % duration).toInt() else 0
+                
+                withContext(Dispatchers.IO) {
+                    val bitmap = Bitmap.createBitmap(
+                        movie.width(),
+                        movie.height(),
+                        Bitmap.Config.ARGB_8888
+                    )
+                    val canvas = android.graphics.Canvas(bitmap)
+                    movie.setTime(time)
+                    movie.draw(canvas, 0f, 0f)
+                    bgCurrentFrame = bitmap.asImageBitmap()
+                }
+                
+                kotlinx.coroutines.delay(16) // ~60 FPS
+            }
+        }
     }
     
     // Decode multiple GIF enemies on background thread
@@ -171,8 +205,10 @@ fun PlayArea(
         Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Vẽ background image phủ toàn bộ canvas
-            drawBackground(bgBitmap)
+            // Vẽ background GIF frame với tốc độ gốc
+            bgCurrentFrame?.let { frame ->
+                drawBackground(frame)
+            }
             
             // Scale nội dung game (tọa độ dựa trên GameState.SCREEN_*) vào kích thước canvas
             val scaleX = size.width / com.baothanhbin.game2d.game.model.GameState.SCREEN_WIDTH
@@ -231,7 +267,7 @@ fun PlayArea(
                         EffectType.FIRE_ROW -> {
                             if (currentFireRowFrames != null && currentFireRowFrames.isNotEmpty()) {
                                 val frame = getGifFrameForTime(currentFireRowFrames)
-                                // Use game-space dimensions; the outer transform will scale to canvas
+                                // su dung full width of game area
                                 val width = com.baothanhbin.game2d.game.model.GameState.SCREEN_WIDTH
                                 val height = effect.size
                                 val dstX = 0
@@ -248,7 +284,8 @@ fun PlayArea(
                         }
                         EffectType.WAVE -> {
                             if (currentWaveFrames != null && currentWaveFrames.isNotEmpty()) {
-                                val frame = getGifFrameForTime(currentWaveFrames)
+                        // Làm chậm hoạt ảnh wave để dịu mắt
+                        val frame = getGifFrameForTime(currentWaveFrames, durationMs = 6000L)
                                 // Use game-space dimensions; let the transform handle scaling
                                 val width = effect.width
                                 val height = effect.size
@@ -268,8 +305,6 @@ fun PlayArea(
                         else -> drawEffect(effect)
                     }
                 }
-                
-                // Freeze effects cho tướng được render trong UnitCard (UI layer)
             }
         }
     }
@@ -347,8 +382,8 @@ private fun decodeDownsampledResource(
  * Vẽ background với 5 cột rõ ràng
  */
 private fun DrawScope.drawBackground(image: ImageBitmap) {
-    val dstW = kotlin.math.min(this.size.width.toInt().coerceAtLeast(1), image.width)
-    val dstH = kotlin.math.min(this.size.height.toInt().coerceAtLeast(1), image.height)
+    val dstW = this.size.width.toInt().coerceAtLeast(1)
+    val dstH = this.size.height.toInt().coerceAtLeast(1)
     drawImage(
         image = image,
         srcOffset = IntOffset.Zero,
@@ -572,8 +607,7 @@ private fun decodeGifFrames(
 /**
  * Choose a frame based on current time for a simple looped animation.
  */
-private fun getGifFrameForTime(frames: List<ImageBitmap>): ImageBitmap {
-    val durationMs = 1000L
+private fun getGifFrameForTime(frames: List<ImageBitmap>, durationMs: Long = 1000L): ImageBitmap {
     val now = System.currentTimeMillis() % durationMs
     val index = ((now.toFloat() / durationMs) * frames.size).toInt().coerceIn(0, frames.size - 1)
     return frames[index]

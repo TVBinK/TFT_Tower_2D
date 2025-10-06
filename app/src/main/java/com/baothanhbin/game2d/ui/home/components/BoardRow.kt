@@ -34,14 +34,10 @@ fun BoardRow(
         android.util.Log.d("BoardRow", "🔄 DRAG STATE CHANGE: isDragging=$isDragging, dragOffset=$dragOffset")
     }
     
-    // Determine which slot is being hovered over during drag
+    // Nhận slot đang hover khi kéo thả Board nhận dragOffset từ parent
     val hoveredSlot = remember(dragOffset, isDragging) {
         if (isDragging && dragOffset != androidx.compose.ui.geometry.Offset.Zero) {
-            android.util.Log.d("BoardRow", "🔍 HIT TEST: dragOffset=$dragOffset, slotCount=${slotPositions.size}")
-            slotPositions.entries.forEach { (slot, rect) ->
-                android.util.Log.d("BoardRow", "  Slot ${slot.name}: $rect")
-                android.util.Log.d("BoardRow", "    → Contains dragOffset? ${rect.contains(dragOffset)}")
-            }
+            // Tìm ô nào chứa vị trí kéo
             val foundSlot = slotPositions.entries.find { (slot, rect) ->
                 rect.contains(dragOffset)
             }?.key
@@ -60,14 +56,15 @@ fun BoardRow(
     // Handle drop when drag ends - capture both hoveredSlot and draggingUnit before they get reset
     LaunchedEffect(isDragging, hoveredSlot, draggingUnit) {
 
-        // Detect drag end (was dragging, now not dragging) and capture current values
+        // Kiểm tra nếu vừa kết thúc kéo thả
         if (wasDragging && !isDragging) {
+            // Kiểm tra: có hoveredSlot hợp lệ không
             val currentHoveredSlot = hoveredSlot ?: lastHoveredSlot
             val currentDraggingUnit = draggingUnit ?: lastDraggingUnit
 
             if (currentHoveredSlot != null && currentDraggingUnit != null) {
                 val targetSlot = currentHoveredSlot
-                // Check if drop is valid
+                // Nếu có: gọi onDrop(unitId, slot)
                 if (targetSlot.position < player.deployCap && player.board[targetSlot] == null) {
                     onDrop(currentDraggingUnit.id, targetSlot)
                 }

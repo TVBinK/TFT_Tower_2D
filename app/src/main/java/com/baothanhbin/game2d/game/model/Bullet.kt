@@ -13,6 +13,9 @@ data class Bullet(
     val speed: Float,
     val size: Float = 8f,
     val heroType: HeroType,
+    // Optional per-bullet control data (for ICE freeze tuning by star)
+    val freezeChance: Float? = null,
+    val freezeDurationMs: Long? = null,
     val targetEnemyId: String? = null,
     val targetX: Float? = null,
     val targetY: Float? = null
@@ -61,7 +64,15 @@ data class Bullet(
                 HeroType.METAL -> 8f    // Đạn kim bình thường
                 else -> 8f            // Các loại khác bình thường
             }
-            
+            // Apply per-star ICE freeze tuning
+            val (freezeChance, freezeDuration) = if (unit.type == HeroType.ICE) {
+                when (unit.star) {
+                    Star.ONE -> 0.20f to 1000L  // 1s, 20%
+                    Star.TWO -> 0.40f to 2000L  // 2s, 40%
+                    Star.THREE -> 0.60f to 3000L // 3s, 60%
+                }
+            } else null to null
+
             return Bullet(
                 x = startX,
                 y = startY,
@@ -69,6 +80,8 @@ data class Bullet(
                 speed = unit.bulletSpeed,
                 size = bulletSize,
                 heroType = unit.type,
+                freezeChance = freezeChance,
+                freezeDurationMs = freezeDuration,
                 targetEnemyId = targetEnemy?.id,
                 targetX = targetEnemy?.x,
                 targetY = targetEnemy?.y

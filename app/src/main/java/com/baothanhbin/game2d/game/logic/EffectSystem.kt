@@ -15,14 +15,15 @@ class EffectSystem {
         val updatedEffects = state.effects.map { effect ->
             // Áp dụng damage theo thời gian cho FIRE_ROW
             if (effect.type == EffectType.FIRE_ROW) {
-                // Trừ 1% máu tối đa mỗi giây khi chạm vào lửa
+                // DOT phần trăm máu mỗi giây theo star được truyền qua damagePerSecond (0.05/0.07/0.10)
                 val seconds = (deltaTimeMs / 1000f)
                 val rowTop = effect.y - effect.size / 2f
                 val rowBottom = effect.y + effect.size / 2f
                 val damaged = newState.enemies.map { e ->
                     if (e.isAlive && e.y in rowTop..rowBottom) {
-                        // Enemy bị cháy - trừ máu theo thời gian 5% maxHp mỗi giây
-                        val damageThisTick = 0.05f * e.maxHp * seconds
+                        // Enemy bị cháy - trừ máu theo phần trăm maxHp mỗi giây
+                        val percent = effect.damagePerSecond.takeIf { it > 0f } ?: 0.05f
+                        val damageThisTick = percent * e.maxHp * seconds
                         e.takeDamage(damageThisTick)
                     } else e
                 }

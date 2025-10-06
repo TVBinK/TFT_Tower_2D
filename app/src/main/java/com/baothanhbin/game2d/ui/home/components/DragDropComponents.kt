@@ -158,6 +158,7 @@ fun DraggableBenchSlot(
             }
             .pointerInput(unit?.id, canManage) {
                 if (unit != null && canManage) {
+                    // Người chơi chạm và kéo unit trên bench -> DraggableBenchSlot phát hiện gesture
                     detectDragGestures(onDragStart = { offset ->
                         // Calculate center of bench slot (70dp x 90dp)
                         val cardSizeInPx = with(density) {
@@ -166,29 +167,28 @@ fun DraggableBenchSlot(
                             )
                         }
 
-                        // Use global position if available, otherwise calculate from offset
+                        // Tính vị trí trung tâm của card
                         val centerPosition =
                             if (globalPosition != androidx.compose.ui.geometry.Offset.Zero) {
-                                // Use global position and add center offset
+                                // sử dụng vị trí đã đo được để tính toán chính xác hơn
                                 globalPosition + androidx.compose.ui.geometry.Offset(
                                     cardSizeInPx.width / 2f, cardSizeInPx.height / 2f
                                 )
                             } else {
-                                // Fallback: use the touch offset directly (less accurate)
                                 offset
                             }
 
                         startDragPosition = centerPosition
                         cumulativeOffset = androidx.compose.ui.geometry.Offset.Zero
-
-                        Log.d("DragBench", "Start position: $startDragPosition")
+                        //Báo cho parent: "Đang kéo unit X tại vị trí Y"
                         onDragStart(unit, startDragPosition)
                     }, onDragEnd = {
                         onDragEnd()
                     }, onDrag = { change, dragAmount ->
-                        // Update cumulative offset and current position
+                        // Cộng dồn khoảng cách di chuyển từ lúc bắt đầu drag
                         cumulativeOffset += dragAmount
                         val currentPosition = startDragPosition + cumulativeOffset
+                        // Báo vị trí mới cho parent
                         onDragUpdate(currentPosition)
                         change.consume() // Consume the gesture to prevent conflicts
                     })

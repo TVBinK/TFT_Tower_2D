@@ -23,7 +23,11 @@ data class GameState(
     val enemiesKilled: Int = 0,  // Số quái đã bị tiêu diệt trong ngày này
     val totalEnemiesPerDay: Int = 5, // Tổng số quái mỗi ngày
     // Tích lũy thời gian để hồi máu cho hệ Mộc trong combat
-    val mocRegenAccumMs: Long = 0L
+    val mocRegenAccumMs: Long = 0L,
+    // Cảnh báo boss - lưu day đã cảnh báo để không lặp lại
+    val lastBossWarningDay: Int = 0,
+    // Sound event tracking
+    val pendingSoundEvents: List<SoundEvent> = emptyList()
 ) {
     
     companion object {
@@ -229,6 +233,31 @@ data class GameState(
     fun addDefeatedBoss(bossType: EnemyType): GameState {
         return copy(defeatedBosses = defeatedBosses + bossType)
     }
+    
+    /**
+     * Add sound event to be played
+     */
+    fun addSoundEvent(event: SoundEvent): GameState {
+        return copy(pendingSoundEvents = pendingSoundEvents + event)
+    }
+    
+    /**
+     * Mark boss warning for a specific day and enqueue sound event
+     */
+    fun addBossWarningForDay(day: Int): GameState {
+        if (lastBossWarningDay == day) return this
+        return copy(
+            lastBossWarningDay = day,
+            pendingSoundEvents = pendingSoundEvents + SoundEvent.BEFORE_BOSS
+        )
+    }
+
+    /**
+     * Clear processed sound events
+     */
+    fun clearSoundEvents(): GameState {
+        return copy(pendingSoundEvents = emptyList())
+    }
 }
 
 /**
@@ -237,4 +266,14 @@ data class GameState(
 enum class GameMode {
     SURVIVAL,   // Vô hạn ngày, boss xuất hiện mỗi 5 ngày (5,10,15,20, ...)
     CAMPAIGN    // Kết thúc khi hoàn thành 15 ngày
+}
+
+/**
+ * Sound events to be played
+ */
+enum class SoundEvent {
+    ICE_SKILL,
+    WATER_SKILL,
+    FIRE_SKILL,
+    BEFORE_BOSS
 }

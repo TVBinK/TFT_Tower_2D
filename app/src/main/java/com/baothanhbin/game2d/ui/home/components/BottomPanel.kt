@@ -145,11 +145,12 @@ fun BottomPanel(
                 onSellUnit = onSellUnit,
                 onSwapUnit = onSwapUnit,
                 onSelectedUnitChange = { selectedUnit = it },
+                // Parent nhận thông tin từ bench sau đó chuyển tiếp xuống BottomPanel
                 onDragStart = { unit, position ->
                     selectedUnit = null  // Clear selection when starting drag
-                    draggingUnit = unit
-                    isDragging = true
-                    dragOffset = position  // Set initial position to center of bench slot
+                    draggingUnit = unit // Lưu unit đang kéo
+                    isDragging = true  // Đánh dấu đang kéo
+                    dragOffset = position   // Lưu vị trí
                 },
                 onDragEnd = { 
                     draggingUnit = null

@@ -64,7 +64,7 @@ class CombatSystem {
 					updatedState = res
 				}
 				HeroType.WATER -> {
-					handleWaterSkill(updatedBoard, slot, unit)
+					updatedState = handleWaterSkill(updatedState, updatedBoard, slot, unit)
 				}
 				HeroType.FLOWER -> {
 					handleFlower(updatedBoard, unit)
@@ -73,7 +73,7 @@ class CombatSystem {
 					updatedState = handleIceShot(updatedState, newBullets, updatedBoard, slot, unit, target)
 				}
 				else -> {
-					updatedState = handleDefaultShot(updatedState, newBullets, updatedBoard, slot, unit, target)
+					updatedState = handleMetalShot(updatedState, newBullets, updatedBoard, slot, unit, target)
 				}
 			}
 		}
@@ -117,42 +117,82 @@ class CombatSystem {
 		if (unit.type != HeroType.FIRE || !unit.canUseFireSkill) return state
 
 		val fireDuration = when (unit.star) {
-			Star.ONE -> 5000L
-			Star.TWO -> 7000L
-			Star.THREE -> 9000L
+			Star.ONE -> 5000L    // Thiêu đốt 5 giây
+			Star.TWO -> 7000L   // Thiêu đốt 7 giây
+ 			Star.THREE -> 9000L // Thiêu đốt 9 giây
 		}
-		val fireDps = unit.actualDamage * 2f
-		val fireThickness = 150f
-		var updatedState = effectSystem.addFireRowAtEnemyPosition(state, target, fireDuration, fireDps, thickness = fireThickness)
+        // DOT percent theo sao: 5% / 7% / 10% mỗi giây
+        val firePercentPerSecond = when (unit.star) {
+            Star.ONE -> 0.05f
+            Star.TWO -> 0.07f
+            Star.THREE -> 0.10f
+        }
+        val fireThickness = 150f
+        var updatedState = effectSystem.addFireRowAtEnemyPosition(state, target, fireDuration, firePercentPerSecond, thickness = fireThickness)
 		val effectEnd = System.currentTimeMillis() + fireDuration
 		board[slot] = unit.copy(lastFireSkillAtMs = System.currentTimeMillis(), fireEffectEndAtMs = effectEnd)
+		// Add sound event for FIRE skill
+		updatedState = updatedState.addSoundEvent(SoundEvent.FIRE_SKILL)
 		return updatedState
 	}
 
 	private fun handleWaterSkill(
+		state: GameState,
 		board: MutableMap<BoardSlot, com.baothanhbin.game2d.game.model.Unit?>,
 		slot: BoardSlot,
 		unit: com.baothanhbin.game2d.game.model.Unit
-	) {
-		if (unit.type != HeroType.WATER) return
+	): GameState {
+		if (unit.type != HeroType.WATER) return state
 		val waveCooldownMs = unit.actualFireRateMs * WAVE_COOLDOWN_MULTIPLIER
 		val timeSinceLastWave = System.currentTimeMillis() - unit.lastWaveAtMs
-		android.util.Log.d("THUY_WAVE", "🌊 THUY Wave Check: timeSinceLastWave=${timeSinceLastWave}ms, waveCooldownMs=${waveCooldownMs}ms, canCreateWave=${timeSinceLastWave >= waveCooldownMs}")
-		val updatedUnit = if (timeSinceLastWave >= waveCooldownMs) {
+		return if (timeSinceLastWave >= waveCooldownMs) {
+			// Tạo hiệu ứng sóng nước theo số lượng sao: 1/2/3 sóng
+			val (unitX, unitY) = getUnitPosition(slot)
+            //Thoi gian sóng theo sao: 5s/6.5s/8s
+			val waveDuration = when (unit.star) {
+				Star.ONE -> 5000L
+				Star.TWO -> 6500L
+				Star.THREE -> 8000L
+			}
+			val waveCount = when (unit.star) {
+				Star.ONE -> 1
+				Star.TWO -> 2
+				Star.THREE -> 3
+			}
+			val waveGapPx = 200f // khoảng cách giữa các sóng theo trục Y
+			val waveDelayMs = 250L // trễ khởi động để giữ khoảng cách khi di chuyển lên
+			var newState = state
+				repeat(waveCount) { index ->
+				val startY = (unitY - 40f) + index * waveGapPx
+				val waveEffect = Effect(
+					type = EffectType.WAVE,
+					x = 0f,
+					y = startY,
+					durationMs = waveDuration,
+						size = 130f, //heigh wave
+					color = 0xFFFFFFFF.toInt(),
+					currentTimeMs = (-index * waveDelayMs), // delay theo sóng
+					startY = startY,
+					endY = 0f,
+					speed = 1f,
+					width = GameState.SCREEN_WIDTH
+				)
+				newState = effectSystem.addEffect(newState, waveEffect)
+			}
 			board[slot] = unit.copy(
 				cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
 				lastShotAtMs = System.currentTimeMillis(),
 				lastWaveAtMs = System.currentTimeMillis()
 			)
-			unit.copy(lastWaveAtMs = System.currentTimeMillis())
+			// Add sound event for WATER skill
+			newState.addSoundEvent(SoundEvent.WATER_SKILL)
 		} else {
-			android.util.Log.d("THUY_WAVE", "🌊 THUY Wave COOLDOWN: ${waveCooldownMs - timeSinceLastWave}ms remaining")
-			unit.copy(
+			board[slot] = unit.copy(
 				cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
 				lastShotAtMs = System.currentTimeMillis()
 			)
+			state
 		}
-		board[slot] = updatedUnit
 	}
 
 	private fun handleIceShot(
@@ -165,11 +205,12 @@ class CombatSystem {
 	): GameState {
 		if (unit.type != HeroType.ICE) return state
 		val (bulletX, bulletY) = getUnitPosition(slot)
-		val iceDamage = when (unit.star) {
-			Star.ONE -> unit.actualDamage * 1.0f
-			Star.TWO -> unit.actualDamage * 1.5f
-			Star.THREE -> unit.actualDamage * 2.0f
-		}
+        // ICE damage fixed per star: 10 / 20 / 30
+        val iceDamage = when (unit.star) {
+            Star.ONE -> 10f
+            Star.TWO -> 20f
+            Star.THREE -> 30f
+        }
 		val iceUnit = unit.copy(baseDamage = iceDamage)
 		createSpreadBullets(collector, iceUnit, bulletX, bulletY, target)
 		var updatedState = state
@@ -180,7 +221,7 @@ class CombatSystem {
 		return updatedState
 	}
 
-	private fun handleDefaultShot(
+	private fun handleMetalShot(
 		state: GameState,
 		collector: MutableList<Bullet>,
 		board: MutableMap<BoardSlot, com.baothanhbin.game2d.game.model.Unit?>,
@@ -190,12 +231,14 @@ class CombatSystem {
 	): GameState {
 		val (bulletX, bulletY) = getUnitPosition(slot)
 		val (enhancedDamage, enhancedSpeed) = if (unit.type == HeroType.METAL) {
+			// Metal: 1★=15, 2★=30 (x2), 3★=45 (x3). Tăng tốc bắn ở 2★/3★ giữ nguyên.
+			val base = 15f
 			when (unit.star) {
-				Star.ONE -> Pair(unit.actualDamage * 1.0f, unit.actualFireRateMs * 1.0f)
-				Star.TWO -> Pair(unit.actualDamage * 1.3f, unit.actualFireRateMs * 0.8f)
-				Star.THREE -> Pair(unit.actualDamage * 1.6f, unit.actualFireRateMs * 0.6f)
+				Star.ONE -> Pair(base * 1.0f, unit.baseFireRateMs * 1.0f)
+				Star.TWO -> Pair(base * 2.0f, unit.baseFireRateMs * 0.8f)
+				Star.THREE -> Pair(base * 3.0f, unit.baseFireRateMs * 0.6f)
 			}
-		} else Pair(unit.actualDamage, unit.actualFireRateMs.toFloat())
+		} else Pair(unit.actualDamage, unit.baseFireRateMs.toFloat())
 		val enhancedUnit = unit.copy(baseDamage = enhancedDamage, baseFireRateMs = enhancedSpeed.toLong())
 		createSpreadBullets(collector, enhancedUnit, bulletX, bulletY, target)
 		logBulletCreated(slot, target)
@@ -342,7 +385,6 @@ class CombatSystem {
                 }
 
                 if (nearestEnemy != null) {
-                    println("BULLET TARGET UPDATE: Bullet(${bullet.x}, ${bullet.y}) now targeting Enemy(${nearestEnemy.x}, ${nearestEnemy.y})")
                     bullet.copy(
                         targetEnemyId = nearestEnemy.id,
                         targetX = nearestEnemy.x,
@@ -400,10 +442,6 @@ class CombatSystem {
         bosses.forEach { boss ->
             val timeSinceLastAbility = now - boss.lastAbilityAtMs
             val canUseAbility = timeSinceLastAbility >= boss.abilityCooldownMs
-            
-            if (boss.enemyType == EnemyType.BOSS3) {
-                println("BOSS3 DEBUG: 🧊 Cooldown check - timeSinceLastAbility: ${timeSinceLastAbility}ms, abilityCooldownMs: ${boss.abilityCooldownMs}ms, canUseAbility: $canUseAbility")
-            }
             
             if (canUseAbility) {
                 when (boss.bossAbility) {
@@ -505,9 +543,6 @@ class CombatSystem {
                 if (bullet.id in bulletsToRemove) continue
                 
                 if (bullet.collidesWith(currentEnemy)) {
-                    // Debug: Log collision
-                    println("BULLET HIT! Bullet(${bullet.x}, ${bullet.y}) hit Enemy(${currentEnemy.x}, ${currentEnemy.y})")
-                    
                     // Enemy nhận damage
                     currentEnemy = currentEnemy.takeDamage(bullet.damage)
                     bulletsToRemove.add(bullet.id)
@@ -518,15 +553,19 @@ class CombatSystem {
                         // Làm chậm enemy (100% chance)
                         currentEnemy = currentEnemy.slow(2000L, 0.3f) // 2 giây, tốc độ còn 30%
                         
-                        // Tỷ lệ đóng băng (30% chance)
-                        val freezeChance = 0.3f
+                        // Tỷ lệ đóng băng theo sao của đạn ICE
+                        val freezeChance = bullet.freezeChance ?: 0.3f
+                        val freezeDuration = bullet.freezeDurationMs ?: 1500L
                         if (kotlin.random.Random.nextFloat() < freezeChance) {
-                            currentEnemy = currentEnemy.freeze(1500L) // 1.5 giây đóng băng
+                            currentEnemy = currentEnemy.freeze(freezeDuration)
                             
                             // Thêm hiệu ứng đóng băng
-                            updatedState = effectSystem.addEffect(updatedState, Effect.createFreeze(currentEnemy.x, currentEnemy.y, 1500L))
+                            updatedState = effectSystem.addEffect(updatedState, Effect.createFreeze(currentEnemy.x, currentEnemy.y, freezeDuration))
                             
-                            println("❄️ FREEZE! Enemy ${currentEnemy.id} frozen for 1.5s")
+                            // Add sound event for ICE freeze
+                            updatedState = updatedState.addSoundEvent(SoundEvent.ICE_SKILL)
+                            
+                            println("❄️ FREEZE! Enemy ${currentEnemy.id} frozen for ${freezeDuration}ms (p=${freezeChance})")
                         } else {
                             println("❄️ SLOW! Enemy ${currentEnemy.id} slowed for 2s")
                         }
@@ -596,17 +635,24 @@ class CombatSystem {
             validBullets
         }
         
-        val aliveEnemies = state.enemies.filter { it.isAlive }
+		// Đánh dấu boss đã bị tiêu diệt nếu chết bởi hiệu ứng/nguồn khác ngoài va chạm đạn
+		var updatedState = state
+		val deadBosses = state.enemies.filter { !it.isAlive && it.isBoss }
+		deadBosses.forEach { boss ->
+			updatedState = updatedState.addDefeatedBoss(boss.enemyType)
+		}
+		
+		val aliveEnemies = state.enemies.filter { it.isAlive }
         
         // Debug: Log bullet count
         if (finalBullets.size != state.bullets.size) {
             println("BULLET CLEANUP: Removed ${state.bullets.size - finalBullets.size} bullets. Remaining: ${finalBullets.size}")
         }
         
-        return state.copy(
-            bullets = finalBullets,
-            enemies = aliveEnemies
-        )
+		return updatedState.copy(
+			bullets = finalBullets,
+			enemies = aliveEnemies
+		)
     }
     
     /**
