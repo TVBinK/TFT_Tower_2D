@@ -15,7 +15,7 @@ enum class Star(val value: Int, val symbol: String) {
  * Pha game (Chuẩn bị hoặc Chiến đấu)
  */
 enum class RoundPhase {
-    PREP,    // Pha mua sắm/chuẩn bị
+    PREP,    // Pha chuẩn bị
     COMBAT   // Pha chiến đấu
 }
 

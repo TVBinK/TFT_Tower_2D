@@ -58,8 +58,37 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     // Limit delta time to prevent large jumps
                     val clampedDeltaTime = deltaTime.coerceAtMost(100L)
                     
-                    // Game tick
-                    gameEngine.tick(clampedDeltaTime)
+                    // Phase-specific logic
+                    val currentState = gameEngine.gameState.value
+                    if (currentState.isGameRunning && !currentState.isPaused && !currentState.isGameOver && !currentState.isVictory) {
+                        var newState = currentState.copy(lastFrameTimeMs = currentTime)
+                        
+                        // Phase logic
+                        newState = when (newState.roundPhase) {
+                            RoundPhase.COMBAT -> gameEngine.CombatLoop(newState, clampedDeltaTime)
+                            RoundPhase.PREP -> gameEngine.handlePrepPhase(newState, clampedDeltaTime)
+                        }
+                        
+                        // Check day completion
+                        if (newState.isDayComplete) {
+                            newState = newState.completeDay()
+                        }
+                        
+                        // Check game over
+                        if (newState.shouldEndGame) {
+                            gameEngine.saveGameOverData(newState)
+                            newState = newState.endGame()
+                        }
+
+                        // Campaign win condition
+                        if (!newState.isGameOver && !newState.isVictory && newState.shouldWinGame) {
+                            gameEngine.saveGameOverData(newState)
+                            newState = newState.winGame()
+                        }
+                        
+                        // Update game state
+                        gameEngine.updateGameState(newState)
+                    }
                     
                     // Log every 60 frames (1 second at 60fps)
                     frameCount++

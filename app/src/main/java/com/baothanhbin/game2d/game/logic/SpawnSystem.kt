@@ -182,6 +182,7 @@ class SpawnSystem {
             isBoss = true,
             bossAbility = ability,
             abilityCooldownMs = when (bossType) {
+                EnemyType.BOSS2 -> 8000L // Boss2: Giảm tốc độ đẻ murid (8 giây)
                 EnemyType.BOSS3 -> 8000L // Boss3 có cooldown dài hơn (8 giây)
                 else -> 5000L // Boss khác vẫn 5 giây
             }

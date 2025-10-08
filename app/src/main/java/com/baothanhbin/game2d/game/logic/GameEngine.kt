@@ -32,73 +32,26 @@ class GameEngine(
         _gameState.value = newState
     }
     
-    /**
-     * Game tick - được gọi mỗi frame
-     */
-    fun tick(deltaTimeMs: Long) {
-        val currentState = _gameState.value
-        
-        if (!currentState.isGameRunning || currentState.isPaused || currentState.isGameOver) {
-            return
-        }
-        
-        // Prevent excessive updates by checking if enough time has passed
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - currentState.lastFrameTimeMs < 16) { // ~60 FPS max
-            return
-        }
-        
-        try {
-            var newState = currentState.copy(
-                lastFrameTimeMs = currentTime
-            )
-            
-            // Phase-specific logic
-            newState = when (newState.roundPhase) {
-                RoundPhase.PREP -> handlePrepPhase(newState, deltaTimeMs)
-                RoundPhase.COMBAT -> handleCombatPhase(newState, deltaTimeMs)
-            }
-            
-            // Check day completion
-            if (newState.isDayComplete) {
-                newState = newState.completeDay()
-            }
-            
-            // Luôn update cooldowns của units trên board
-            newState = combatSystem.updateUnitCooldowns(newState, deltaTimeMs)
-            
-            // Check game over
-            if (newState.shouldEndGame) {
-                saveGameOverData(newState)
-                newState = newState.endGame()
-            }
-
-            // Campaign win condition: defeat all 3 bosses
-            if (!newState.isGameOver && !newState.isVictory && newState.shouldWinGame) {
-                saveGameOverData(newState)
-                newState = newState.winGame()
-            }
-            
-            _gameState.value = newState
-        } catch (e: Exception) {
-            // Log error but don't crash the game loop
-            android.util.Log.e("GameEngine", "Error in game tick: ${e.message}", e)
-        }
-    }
     
+    /**
+     * Cập nhật game state
+     */
+    fun updateGameState(newState: GameState) {
+        _gameState.value = newState
+    }
     
     /**
      * Xử lý pha prep
      */
-    private fun handlePrepPhase(state: GameState, deltaTimeMs: Long): GameState {
-        // Trong pha prep, không có logic đặc biệt
-        return state
+    fun handlePrepPhase(state: GameState, deltaTimeMs: Long): GameState {
+        // Trong pha prep, cần update cooldowns của units để regen mana
+        return combatSystem.updateUnitCooldowns(state, deltaTimeMs)
     }
     
     /**
      * Xử lý pha combat
      */
-    private fun handleCombatPhase(state: GameState, deltaTimeMs: Long): GameState {
+    fun CombatLoop(state: GameState, deltaTimeMs: Long): GameState {
         var newState = state
         
         // Debug: Log combat phase info
@@ -195,7 +148,8 @@ class GameEngine(
     fun sellUnit(unitId: String) {
         val currentState = _gameState.value
         
-        if (!currentState.isInPrep) return
+        // Có thể bán unit trong cả PREP và COMBAT phase
+        if (!currentState.canManageUnits()) return
         
         val unit = currentState.player.bench.find { it.id == unitId } ?: return
         
@@ -334,7 +288,7 @@ class GameEngine(
     /**
      * Lưu dữ liệu khi game over
      */
-    private fun saveGameOverData(state: GameState) {
+    fun saveGameOverData(state: GameState) {
         gameDataStore?.let { dataStore ->
             coroutineScope?.launch {
                 dataStore.saveBestScore(state.player.score, state.player.day)

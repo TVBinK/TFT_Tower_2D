@@ -4,7 +4,7 @@ package com.baothanhbin.game2d.game.model
  * Player state - thông tin người chơi theo TFT style
  */
 data class Player(
-    val gold: Int = 5,
+    val gold: Int = 40,
     val level: Int = 2,
     val xp: Int = 0,
     val bench: List<Unit> = createStartingUnits(),
