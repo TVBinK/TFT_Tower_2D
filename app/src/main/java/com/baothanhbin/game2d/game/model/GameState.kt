@@ -36,6 +36,14 @@ data class GameState(
         // Ngưỡng chạm đáy (đầu BottomPanel) trong toạ độ game-space
         // Có thể tinh chỉnh để khớp viền nâu của BottomPanel
         const val DEATH_LINE_OFFSET = 150f
+        
+        /**
+         * Tính số lượng quái mỗi ngày (5 + ngày - 1)
+         * Ngày 1: 5 quái, Ngày 2: 6 quái, Ngày 3: 7 quái...
+         */
+        fun calculateEnemiesPerDay(day: Int): Int {
+            return 5 + day - 1
+        }
 
         /**
          * Tạo GameState mẫu dùng cho Preview UI
@@ -149,7 +157,8 @@ data class GameState(
             bullets = emptyList(),  // Clear bullets
             effects = emptyList(),  // Clear effects
             enemiesSpawned = 0,
-            enemiesKilled = 0
+            enemiesKilled = 0,
+            totalEnemiesPerDay = calculateEnemiesPerDay(newDay) // Cập nhật số lượng quái theo ngày mới
         )
     }
     
@@ -196,7 +205,8 @@ data class GameState(
             lastFrameTimeMs = now,
             lastSpawnTimeMs = now, // Khởi tạo spawn time để combat phase hoạt động ngay
             enemiesSpawned = 0,
-            enemiesKilled = 0
+            enemiesKilled = 0,
+            totalEnemiesPerDay = calculateEnemiesPerDay(player.day) // Khởi tạo số lượng quái cho ngày đầu
         )
     }
     
