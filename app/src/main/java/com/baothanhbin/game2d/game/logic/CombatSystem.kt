@@ -22,7 +22,7 @@ class CombatSystem {
 	}
     
     /**
-     * Cập nhật cooldowns của tất cả units trên board
+     * Cập nhật cooldowns và mana của tất cả units trên board
      */
     fun updateUnitCooldowns(state: GameState, deltaTimeMs: Long): GameState {
         val updatedBoard = state.player.board.mapValues { (_, unit) ->
@@ -35,11 +35,20 @@ class CombatSystem {
     }
     
     /**
-     * Cập nhật cooldown của một unit
+     * Cập nhật cooldown và mana của một unit
      */
     private fun updateUnitCooldown(unit: com.baothanhbin.game2d.game.model.Unit, deltaTimeMs: Long): com.baothanhbin.game2d.game.model.Unit {
         val newCooldown = (unit.cooldownRemainingMs - deltaTimeMs).coerceAtLeast(0L)
-        return unit.copy(cooldownRemainingMs = newCooldown)
+        
+        // Cập nhật mana theo thời gian (deltaTimeMs là milliseconds, cần chuyển sang seconds)
+        val deltaTimeSeconds = deltaTimeMs / 1000f
+        val manaGain = unit.manaRegenPerSecond * deltaTimeSeconds
+        val newMana = (unit.currentMana + manaGain).coerceAtMost(unit.maxMana)
+        
+        return unit.copy(
+            cooldownRemainingMs = newCooldown,
+            currentMana = newMana
+        )
     }
     
     /**
@@ -130,7 +139,16 @@ class CombatSystem {
         val fireThickness = 150f
         var updatedState = effectSystem.addFireRowAtEnemyPosition(state, target, fireDuration, firePercentPerSecond, thickness = fireThickness)
 		val effectEnd = System.currentTimeMillis() + fireDuration
-		board[slot] = unit.copy(lastFireSkillAtMs = System.currentTimeMillis(), fireEffectEndAtMs = effectEnd)
+		
+		// Sử dụng cooldown 5 giây
+		val updatedUnit = unit.copy(
+			lastFireSkillAtMs = System.currentTimeMillis(), 
+			fireEffectEndAtMs = effectEnd,
+			cooldownRemainingMs = (unit.actualFireRateMs * FIRE_RATE_MULTIPLIER).toLong(),
+			lastShotAtMs = System.currentTimeMillis()
+		)
+		board[slot] = updatedUnit
+		
 		// Add sound event for FIRE skill
 		updatedState = updatedState.addSoundEvent(SoundEvent.FIRE_SKILL)
 		return updatedState

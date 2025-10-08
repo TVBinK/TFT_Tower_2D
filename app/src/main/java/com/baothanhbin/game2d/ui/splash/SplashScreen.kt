@@ -77,11 +77,29 @@ fun SplashScreen(
     // Local media player for splash-only background music
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
-    // Create player once
-    LaunchedEffect(Unit) {
+    // Function to get music resource based on season
+    fun getSeasonMusicResource(season: Season): Int {
+        return when (season) {
+            Season.SPRING -> com.baothanhbin.game2d.R.raw.sound_splash_spring
+            Season.SUMMER -> com.baothanhbin.game2d.R.raw.sound_splash_summer
+            Season.AUTUMN -> com.baothanhbin.game2d.R.raw.sound_splash_autumn
+            Season.WINTER -> com.baothanhbin.game2d.R.raw.sound_splash_winter
+        }
+    }
+
+    // Create player based on current season
+    LaunchedEffect(currentSeason) {
         try {
-            mediaPlayer = MediaPlayer.create(context, com.baothanhbin.game2d.R.raw.sound_splash).apply {
+            // Stop and release previous player
+            mediaPlayer?.let { player ->
+                if (player.isPlaying) player.stop()
+                player.release()
+            }
+            
+            // Create new player for current season
+            mediaPlayer = MediaPlayer.create(context, getSeasonMusicResource(currentSeason)).apply {
                 isLooping = true
+                if (soundOn) start()
             }
         } catch (_: Exception) { }
     }

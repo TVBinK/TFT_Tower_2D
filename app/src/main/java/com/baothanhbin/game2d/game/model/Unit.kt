@@ -19,6 +19,11 @@ data class Unit(
     val lastFireSkillAtMs: Long = 0L, // Thời gian sử dụng Fire skill cuối cùng
     val fireEffectEndAtMs: Long = 0L, // Thời điểm hàng lửa kết thúc lần gần nhất
     
+    // Mana system cho skills
+    val currentMana: Float = 0f,
+    val maxMana: Float = 100f,
+    val manaRegenPerSecond: Float = 10f,
+    
     // Vị trí nếu đang trên board
     val boardPosition: BoardSlot? = null,
     val isOnBoard: Boolean = false,
@@ -56,7 +61,7 @@ data class Unit(
      * Có thể sử dụng Fire skill? (cooldown 5 giây)
      */
     val canUseFireSkill: Boolean
-        get() = !isFrozen && System.currentTimeMillis() >= (fireEffectEndAtMs + FIRE_SKILL_GAP_AFTER_END_MS)
+        get() = !isFrozen && System.currentTimeMillis() >= (fireEffectEndAtMs + FIRE_SKILL_COOLDOWN_MS)
     
     /**
      * Giá bán lại (cố định cho tất cả hero)
@@ -66,7 +71,7 @@ data class Unit(
     
     companion object {
         private const val MIN_FIRE_RATE_MS: Long = 700L
-        private const val FIRE_SKILL_GAP_AFTER_END_MS: Long = 5000L
+        private const val FIRE_SKILL_COOLDOWN_MS: Long = 5000L // 5 giây cooldown
         private var idCounter = 0L
         
         // Cache HeroType.values() để tránh gọi lại nhiều lần
@@ -85,6 +90,12 @@ data class Unit(
             val (damage, fireRate) = getBaseStatsForType(type)
             val currentTime = System.currentTimeMillis()
             
+            // Khởi tạo mana cho Fire hero
+            val initialMana = when (type) {
+                HeroType.FIRE -> 0f // Fire hero bắt đầu với 0 mana
+                else -> 0f // Các hero khác cũng bắt đầu với 0 mana
+            }
+            
             return Unit(
                 type = type,
                 baseDamage = damage,
@@ -92,7 +103,8 @@ data class Unit(
                 // Khởi tạo cooldown ngẫu nhiên để tránh tất cả bắn cùng lúc khi vào game
                 cooldownRemainingMs = (Math.random() * fireRate).toLong().coerceAtLeast(0L),
                 lastShotAtMs = currentTime,
-                lastWaveAtMs = currentTime // Khởi tạo lastWaveAtMs để tránh wave ngay lập tức
+                lastWaveAtMs = currentTime, // Khởi tạo lastWaveAtMs để tránh wave ngay lập tức
+                currentMana = initialMana
             )
         }
         
@@ -137,12 +149,16 @@ data class Unit(
 
     /**
      * Cập nhật trạng thái (hết đóng băng?)
+     * Note: Mana regen được xử lý trong CombatSystem.updateUnitCooldown()
      */
     fun updateStatus(): Unit {
+        // Cập nhật freeze status
         if (isFrozen && System.currentTimeMillis() >= freezeEndTime) {
             return copy(isFrozen = false, freezeEndTime = 0L)
         }
+        
         return this
     }
+    
 
 }

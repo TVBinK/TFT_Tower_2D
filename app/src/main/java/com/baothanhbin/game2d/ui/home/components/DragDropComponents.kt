@@ -465,6 +465,7 @@ fun UnitCard(
             }
         }
 
+
         // Freeze overlay khi tướng bị đóng băng - hiển thị freeze effect
         if (unit.isFrozen) {
             Box(

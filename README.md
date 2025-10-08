@@ -64,3 +64,4 @@ Metal (handleMetalShot)
 - Tạo tướng ban đầu cho player: createStartingUnits
 - Xử lý trừ Hp khi quasi chạm vào bottom: checkEnemiesReachedBottom
 - Cộng score:  scoreGained += (currentEnemy.reward * 10).toLong()
+- Countdown fire: FIRE_SKILL_COOLDOWN_MS 
