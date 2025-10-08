@@ -53,8 +53,14 @@ Metal (handleMetalShot)
 - **1 sao**: Tướng cơ bản (merge 3 tướng 1★ → 1 tướng 2★)
 - **2 sao**: Tướng mạnh hơn (merge 3 tướng 2★ → 1 tướng 3★)
 - **3 sao**: Tướng mạnh nhất
-
+### Reward system
+- Vàng sẽ nhiều hơn ở các ngày val baseReward = 1 + day / 5, tức là:
+  - Ngày 1–4: BASIC/FAST = 1 vàng, TANK = 2 vàng.
+  - Ngày 5–9: BASIC/FAST = 2 vàng, TANK = 4 vàng.
+  - Ngày 10–14: BASIC/FAST = 3 vàng, TANK = 6 vàng.
 ### Note
 - Phát sound và nháy khi boss chuẩn bị xuất hiện: SoundEvent.BEFORE_BOSS 
                                                   Mỗi nháy: alpha 0 -> 0.7 trong 160ms, rồi 0.7 -> 0 trong 220ms. Nghỉ 120ms giữa hai nháy.
-- 
+- Tạo tướng ban đầu cho player: createStartingUnits
+- Xử lý trừ Hp khi quasi chạm vào bottom: checkEnemiesReachedBottom
+- Cộng score:  scoreGained += (currentEnemy.reward * 10).toLong()

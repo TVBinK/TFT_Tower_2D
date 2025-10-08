@@ -4,12 +4,12 @@ package com.baothanhbin.game2d.game.model
  * Player state - thông tin người chơi theo TFT style
  */
 data class Player(
-    val gold: Int = 10,
+    val gold: Int = 5,
     val level: Int = 2,
     val xp: Int = 0,
     val bench: List<Unit> = createStartingUnits(),
     val board: Map<BoardSlot, Unit?> = BoardSlot.values().associateWith { null },
-    val lives: Int = 100,
+    val lives: Int = 200,
     val score: Long = 0L,
     val day: Int = 1,
     val gameTimeMs: Long = 0L,
@@ -28,10 +28,7 @@ data class Player(
          */
         private fun createStartingUnits(): List<Unit> {
             return listOf(
-                Unit.create(HeroType.METAL),
-                Unit.create(HeroType.FIRE),
-                Unit.create(HeroType.WATER),
-                Unit.create(HeroType.ICE)
+                Unit.create(HeroType.METAL)
             )
         }
         

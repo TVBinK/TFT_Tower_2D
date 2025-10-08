@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import com.baothanhbin.game2d.game.model.ColorTheme
 import com.baothanhbin.game2d.game.model.GameMode
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -17,11 +16,10 @@ import androidx.compose.ui.platform.LocalContext
 import com.baothanhbin.game2d.game.datastore.GameDataStore
 import androidx.compose.runtime.rememberCoroutineScope
 import com.baothanhbin.game2d.game.model.SoundEvent
-import kotlinx.coroutines.launch
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.TileMode
+import com.baothanhbin.game2d.ui.dialog.GameOverDialog
+import com.baothanhbin.game2d.ui.dialog.PauseOverlay
+import com.baothanhbin.game2d.ui.dialog.VictoryDialog
 
 /**
  * Màn hình chính của game

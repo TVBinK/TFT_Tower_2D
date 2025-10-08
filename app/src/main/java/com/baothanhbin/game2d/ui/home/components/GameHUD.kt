@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baothanhbin.game2d.game.model.GameState
 import com.baothanhbin.game2d.game.model.RoundPhase
+import com.baothanhbin.game2d.ui.dialog.WarningDialog
 
 
 /**
@@ -154,42 +155,11 @@ fun GameHUD(
     
     // Exit confirmation dialog
     if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showExitConfirmation = false },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text("Cảnh báo")
-                }
-            },
-            text = {
-                Text("Bạn có chắc muốn quay về menu? Tiến trình game sẽ không được lưu.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showExitConfirmation = false
-                        onBackToSplash()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFFFF5722)
-                    )
-                ) {
-                    Text("Có")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitConfirmation = false }) {
-                    Text("Không")
-                }
+        WarningDialog(
+            onDismiss = { showExitConfirmation = false },
+            onConfirm = {
+                showExitConfirmation = false
+                onBackToSplash()
             }
         )
     }

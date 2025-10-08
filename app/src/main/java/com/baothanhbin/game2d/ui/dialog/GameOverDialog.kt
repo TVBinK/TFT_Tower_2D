@@ -1,4 +1,4 @@
-package com.baothanhbin.game2d.ui.home.components
+package com.baothanhbin.game2d.ui.dialog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -26,8 +26,6 @@ fun GameOverDialog(
     onRestart: () -> Unit,
     onBackToSplash: () -> Unit
 ) {
-    var showExitConfirmation by remember { mutableStateOf(false) }
-    
     Dialog(onDismissRequest = { }) {
         Card(
             modifier = Modifier
@@ -83,7 +81,7 @@ fun GameOverDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
-                        onClick = { showExitConfirmation = true },
+                        onClick = onBackToSplash,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.White
@@ -104,49 +102,6 @@ fun GameOverDialog(
                 }
             }
         }
-    }
-    
-    // Exit confirmation dialog
-    if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showExitConfirmation = false },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text("Warning")
-                }
-            },
-            text = {
-                Text("Are you sure you want to return to the menu?\n" +
-                        "Your game progress will not be saved.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showExitConfirmation = false
-                        onBackToSplash()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFFFF5722)
-                    )
-                ) {
-                    Text("Có")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitConfirmation = false }) {
-                    Text("Không")
-                }
-            }
-        )
     }
 }
 
@@ -261,45 +216,14 @@ fun PauseOverlay(
             }
         }
     }
-    
+
     // Exit confirmation dialog
     if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showExitConfirmation = false },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text("Warning")
-                }
-            },
-            text = {
-                Text("Are you sure you want to return to the menu? Your game progress will not be saved.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showExitConfirmation = false
-                        onBackToSplash()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFFFF5722)
-                    )
-                ) {
-                    Text("Có")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitConfirmation = false }) {
-                    Text("Không")
-                }
+        WarningDialog(
+            onDismiss = { showExitConfirmation = false },
+            onConfirm = {
+                showExitConfirmation = false
+                onBackToSplash()
             }
         )
     }

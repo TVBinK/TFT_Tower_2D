@@ -17,10 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun AlertDialog(
+fun WarningDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
 ) {
     AlertDialog(
-        onDismissRequest = { showExitConfirmation = false },
+        onDismissRequest = { onDismiss() },
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -41,8 +43,7 @@ fun AlertDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    showExitConfirmation = false
-                    onBackToSplash()
+                    onConfirm()
                 },
                 colors = ButtonDefaults.textButtonColors(
                     contentColor = Color(0xFFFF5722)
@@ -52,7 +53,7 @@ fun AlertDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = { showExitConfirmation = false }) {
+            TextButton(onClick = { onDismiss() }) {
                 Text("Không")
             }
         }

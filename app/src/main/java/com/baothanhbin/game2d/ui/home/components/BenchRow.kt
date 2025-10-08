@@ -49,8 +49,8 @@ fun BenchRow(
     ) {
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
             // Bench slots
             itemsIndexed(

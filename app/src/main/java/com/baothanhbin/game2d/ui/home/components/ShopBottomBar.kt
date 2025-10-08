@@ -256,19 +256,19 @@ fun ShopEntryRow(
                                 text = heroDescription.star1Description,
                                 fontFamily = tangoRegular,
                                 color = Color(0xFFCFCFCF),
-                                fontSize = 17.sp
+                                fontSize = 14.sp
                             )
                             Text(
                                 text = heroDescription.star2Description,
                                 fontFamily = tangoRegular,
                                 color = Color(0xFFCFCFCF),
-                                fontSize = 17.sp
+                                fontSize = 14.sp
                             )
                             Text(
                                 text = heroDescription.star3Description,
                                 fontFamily = tangoRegular,
                                 color = Color(0xFFCFCFCF),
-                                fontSize = 17.sp
+                                fontSize = 14.sp
                             )
                         }
                     }

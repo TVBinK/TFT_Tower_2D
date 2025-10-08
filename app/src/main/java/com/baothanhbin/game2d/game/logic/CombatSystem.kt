@@ -682,24 +682,13 @@ class CombatSystem {
             val gameOverPlayer = updatedState.player.copy(lives = 0)
             updatedState = updatedState.copy(player = gameOverPlayer)
             
-            println("💀 GAME OVER! Boss reached bottom!")
-            bossesAtBottom.forEach { boss ->
-                println("   - Boss ${boss.enemyType} reached bottom - INSTANT DEFEAT!")
-            }
         } else {
-            // Trừ lives của player dựa trên HP còn lại của enemies thường chạm đáy (có cân đối)
+            // Trừ lives theo HP thực tế còn lại của enemies thường chạm đáy (làm tròn lên)
             val normalEnemiesAtBottom = enemiesAtBottom.filter { !it.isBoss }
             val damageToPlayer = normalEnemiesAtBottom.sumOf { enemy -> 
-                // Tính damage dựa trên HP còn lại, nhưng có giới hạn để cân đối
-                val remainingHp = enemy.currentHp.coerceAtLeast(1f)
-                
-                // Chuyển đổi HP enemy thành damage player với tỷ lệ cân đối
-                // Công thức: sqrt(HP) * 2 để giảm damage khi HP cao
-                val rawDamage = kotlin.math.sqrt(remainingHp) * 2f
-                
-                // Giới hạn damage tối đa mỗi enemy là 10 HP
-                kotlin.math.ceil(rawDamage).toInt().coerceIn(1, 10)
+                kotlin.math.floor(enemy.currentHp.coerceAtLeast(0f)).toInt().coerceAtLeast(1)
             }
+            // Trừ máu Player
             val newLives = (updatedState.player.lives - damageToPlayer).coerceAtLeast(0)
             val updatedPlayer = updatedState.player.copy(lives = newLives)
             updatedState = updatedState.copy(player = updatedPlayer)
@@ -709,15 +698,11 @@ class CombatSystem {
         val normalEnemiesAtBottom = enemiesAtBottom.filter { !it.isBoss }
         if (normalEnemiesAtBottom.isNotEmpty()) {
             val damageToPlayer = normalEnemiesAtBottom.sumOf { enemy -> 
-                val remainingHp = enemy.currentHp.coerceAtLeast(1f)
-                val rawDamage = kotlin.math.sqrt(remainingHp) * 2f
-                kotlin.math.ceil(rawDamage).toInt().coerceIn(1, 10)
+                kotlin.math.floor(enemy.currentHp.coerceAtLeast(0f)).toInt().coerceAtLeast(1)
             }
             println("🔥 ENEMY REACHED BOTTOM! ${normalEnemiesAtBottom.size} normal enemies, total damage: $damageToPlayer HP")
             normalEnemiesAtBottom.forEach { enemy ->
-                val remainingHp = enemy.currentHp.coerceAtLeast(1f)
-                val rawDamage = kotlin.math.sqrt(remainingHp) * 2f
-                val finalDamage = kotlin.math.ceil(rawDamage).toInt().coerceIn(1, 10)
+                val finalDamage = kotlin.math.floor(enemy.currentHp.coerceAtLeast(0f)).toInt().coerceAtLeast(1)
                 println("   - Enemy HP: ${enemy.currentHp}/${enemy.maxHp}, damage dealt: $finalDamage")
             }
         }
