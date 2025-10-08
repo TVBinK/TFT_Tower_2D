@@ -48,6 +48,10 @@ Metal (handleMetalShot)
 ★☆☆: Tăng sức bắn cơ bản (actualDamage theo sao), bắn thẳng. 2000ms = 0.5 viên/giây       -> sát thương 15
 ★★☆: Damage x2 và tăng tốc bắn, 1600 = 0.625 viên/giây                                    -> sát thương 30
 ★★★: Damage x3 và tăng tốc bắn mạnh, 1200 = 0.833 viên/giây                               -> sát thương 45
+Flower
+★☆☆: hồi 1% máu tối đa mỗi giây
+★★☆: hồi 2% máu tối đa mỗi giây
+★★★: hồi 5% máu tối đa mỗi giây
 
 #### Hệ thống sao và tier
 - **1 sao**: Tướng cơ bản (merge 3 tướng 1★ → 1 tướng 2★)
@@ -60,6 +64,7 @@ Metal (handleMetalShot)
   - Ngày 10–14: BASIC/FAST = 3 vàng, TANK = 6 vàng.
 ### Note
 - hàm chính CombatLoop
+- ở chế độ survial, quái +1 mỗi ngày: calculateEnemiesPerDay
 - xem setting quái trong Enermy:  create
 - Phát sound và nháy khi boss chuẩn bị xuất hiện: SoundEvent.BEFORE_BOSS 
                                                   Mỗi nháy: alpha 0 -> 0.7 trong 160ms, rồi 0.7 -> 0 trong 220ms. Nghỉ 120ms giữa hai nháy.
@@ -67,3 +72,9 @@ Metal (handleMetalShot)
 - Xử lý trừ Hp khi quasi chạm vào bottom: checkEnemiesReachedBottom
 - Cộng score:  scoreGained += (currentEnemy.reward * 10).toLong()
 - Countdown fire: FIRE_SKILL_COOLDOWN_MS
+- Tướng mộc hồi hp theo % máu(1,2,5): healPercentage
+- Khi đạn bắn trừ máu: takeDamage
+  - Quy trình render gif: GIF Decoding: Movie.decodeStream() → Decode GIF thành frames
+                          Bitmap Creation: Bitmap.createBitmap() → Tạo bitmap cho mỗi frame
+                          Canvas Drawing: android.graphics.Canvas → Vẽ frame lên bitmap
+                          Compose Rendering: Canvas + DrawScope → Render lên screen

@@ -55,12 +55,10 @@ class GameEngine(
         var newState = state
         
         // Debug: Log combat phase info
-        android.util.Log.d("GameEngine", "🔥 COMBAT PHASE: enemies=${newState.enemies.size}, bullets=${newState.bullets.size}, unitsOnBoard=${newState.player.board.values.count { it != null }}")
-        
+
         // Spawn enemies nếu chưa đủ số lượng
         if (newState.remainingEnemiesToSpawn > 0) {
             newState = spawnSystem.spawnEnemies(newState, deltaTimeMs)
-            android.util.Log.d("GameEngine", "👹 SPAWN CHECK: remainingToSpawn=${newState.remainingEnemiesToSpawn}")
         }
         
         // Update units cooldowns
@@ -92,27 +90,46 @@ class GameEngine(
 
         // Mộc: hồi HP theo sao nếu có ít nhất một tướng Mộc trên board
         val flowerUnits = newState.player.board.values.filter { it?.type == com.baothanhbin.game2d.game.model.HeroType.FLOWER }
+        println("🌸 FLOWER DEBUG: flowerUnits count = ${flowerUnits.size}, current lives = ${newState.player.lives}")
+        
+        // Debug: Show all units on board
+        newState.player.board.values.forEach { unit ->
+            if (unit != null) {
+                println("🌸 BOARD DEBUG: Unit type = ${unit.type}, star = ${unit.star}")
+            }
+        }
+        
         if (flowerUnits.isNotEmpty()) {
             // Lấy tướng Mộc có sao cao nhất để xác định hiệu ứng
             val highestStarFlower = flowerUnits.maxByOrNull { it?.star ?: Star.ONE }!!
             
-            val (healAmount, healInterval) = when (highestStarFlower.star) {
-                Star.ONE -> Pair(2, 10000L)   // ★☆☆ +2 HP mỗi 10s
-                Star.TWO -> Pair(3, 10000L)   // ★★☆ +3 HP mỗi 10s  
-                Star.THREE -> Pair(5, 8000L)  // ★★★ +5 HP mỗi 8s
+            val healPerSecond = when (highestStarFlower.star) {
+                Star.ONE -> 2      // ★☆☆ 2 HP mỗi giây (1% của 200 HP/giây)
+                Star.TWO -> 4      // ★★☆ 4 HP mỗi giây (2% của 200 HP/giây)
+                Star.THREE -> 10   // ★★★ 10 HP mỗi giây (5% của 200 HP/giây)
             }
             
-            val accum = newState.mocRegenAccumMs + deltaTimeMs
-            if (accum >= healInterval) {
-                val healedPlayer = newState.player.copy(lives = (newState.player.lives + healAmount).coerceAtMost(100))
-                newState = newState.copy(player = healedPlayer, mocRegenAccumMs = accum - healInterval)
+            val healPerMs = healPerSecond / 1000.0f // HP per millisecond
+            val healAccumulatorFloat = newState.mocRegenAccumMs + (healPerMs * deltaTimeMs).toFloat()
+            
+            println("🌸 HEAL DEBUG: healPerSecond = $healPerSecond, healPerMs = $healPerMs, deltaTimeMs = $deltaTimeMs, healAccumulatorFloat = $healAccumulatorFloat, currentAccum = ${newState.mocRegenAccumMs}")
+            
+            if (healAccumulatorFloat >= 1.0) { // 1 HP worth of healing
+                val healAmount = healAccumulatorFloat.toInt()
+                val remainingAccumulator = healAccumulatorFloat - healAmount
                 
-                println("🌸 FLOWER HEAL: +${healAmount} HP (${highestStarFlower.star} star)")
+                val healedPlayer = newState.player.copy(lives = (newState.player.lives + healAmount).coerceAtMost(200))
+                newState = newState.copy(
+                    player = healedPlayer,
+                    mocRegenAccumMs = remainingAccumulator
+                )
+                
+                println("🌸 FLOWER HEAL: +${healAmount} HP (${highestStarFlower.star} star, $healPerSecond HP/s)")
             } else {
-                newState = newState.copy(mocRegenAccumMs = accum)
+                newState = newState.copy(mocRegenAccumMs = healAccumulatorFloat)
             }
-        } else if (newState.mocRegenAccumMs != 0L) {
-            newState = newState.copy(mocRegenAccumMs = 0L)
+        } else if (newState.mocRegenAccumMs != 0f) {
+            newState = newState.copy(mocRegenAccumMs = 0f)
         }
 
         return newState

@@ -29,9 +29,9 @@ enum class HeroDescription(
     FLOWER(
         heroType = HeroType.FLOWER,
         displayName = "Flower",
-        star1Description = "★☆☆ Restores +2 HP to the base every 10 seconds.",
-        star2Description = "★★☆ Restores +3 HP every 10 seconds.",
-        star3Description = "★★★ Restores +5 HP every 8 seconds and reduces skill cooldown."
+        star1Description = "★☆☆ Restores +1% HP per second every 1 seconds.",
+        star2Description = "★★☆ Restores +2% HP per second every 1 seconds.",
+        star3Description = "★★★ Restores +5% HP per second every 1 seconds."
     ),
 
     ICE(

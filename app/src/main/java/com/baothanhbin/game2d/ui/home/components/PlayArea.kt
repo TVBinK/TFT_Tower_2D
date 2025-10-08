@@ -37,10 +37,9 @@ fun PlayArea(
     onForceCombat: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
     val context = LocalContext.current
     val bulletKim: ImageBitmap = remember {
-        // Load and chroma-key the bullet image to remove connected gray-ish background
+        // Decode GIF thành các frame bitmap
         val raw = BitmapFactory.decodeResource(context.resources, com.baothanhbin.game2d.R.drawable.bullet_metal)
             .copy(Bitmap.Config.ARGB_8888, true)
         val keyColor = raw.getPixel(0, 0)
@@ -88,16 +87,18 @@ fun PlayArea(
                 val currentTime = System.currentTimeMillis() - bgStartTime
                 val duration = movie.duration()
                 val time = if (duration > 0) (currentTime % duration).toInt() else 0
-                
+                // Khởi tạo bitmap với kích thước movie
                 withContext(Dispatchers.IO) {
                     val bitmap = Bitmap.createBitmap(
                         movie.width(),
                         movie.height(),
                         Bitmap.Config.ARGB_8888
                     )
+                    // Dùng Canvas để vẽ frame hiện tại
                     val canvas = android.graphics.Canvas(bitmap)
                     movie.setTime(time)
                     movie.draw(canvas, 0f, 0f)
+                    //Render với comppsose
                     bgCurrentFrame = bitmap.asImageBitmap()
                 }
                 

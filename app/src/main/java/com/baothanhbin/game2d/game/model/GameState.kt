@@ -22,8 +22,8 @@ data class GameState(
     val enemiesSpawned: Int = 0, // Số quái đã spawn trong ngày này
     val enemiesKilled: Int = 0,  // Số quái đã bị tiêu diệt trong ngày này
     val totalEnemiesPerDay: Int = 5, // Tổng số quái mỗi ngày
-    // Tích lũy thời gian để hồi máu cho hệ Mộc trong combat
-    val mocRegenAccumMs: Long = 0L,
+    // Tích lũy HP để hồi máu cho hệ Mộc trong combat
+    val mocRegenAccumMs: Float = 0f,
     // Cảnh báo boss - lưu day đã cảnh báo để không lặp lại
     val lastBossWarningDay: Int = 0,
     // Sound event tracking

@@ -561,7 +561,7 @@ class CombatSystem {
                 if (bullet.id in bulletsToRemove) continue
                 
                 if (bullet.collidesWith(currentEnemy)) {
-                    // Enemy nhận damage
+                    // Enemy nhận damage và trừ máu
                     currentEnemy = currentEnemy.takeDamage(bullet.damage)
                     bulletsToRemove.add(bullet.id)
                     hit = true
